@@ -1,0 +1,99 @@
+# ========================================
+# LOGS
+# ========================================
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ========================================
+# DEPENDENCIAS (NO SUBIR)
+# ========================================
+node_modules/
+**/node_modules/
+
+# Evita que se suban lockfiles externos o de carpetas superiores equivocadas
+package-lock.json
+package.json
+yarn.lock
+pnpm-lock.yaml
+**/package-lock.json
+**/yarn.lock
+**/pnpm-lock.yaml
+
+# ========================================
+# BUILDS
+# ========================================
+dist/
+dist-ssr/
+dist-electron/
+out/
+release/
+
+# Electron
+*.asar
+
+# Vite cache
+.vite/
+# dependencies
+node_modules/
+
+# builds
+dist/
+build/
+out/
+.next/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# ========================================
+# CONFIG LOCAL / VARIABLES SENSIBLES
+# ========================================
+*.local
+.env
+.env.*
+!.env.example
+
+# ========================================
+# EDITOR SETTINGS
+# ========================================
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ========================================
+# SISTEMA / BACKUPS / OTROS
+# ========================================
+Thumbs.db
+*.bak
+*.tmp
+
+# ========================================
+# PREVIENE QUE SUBAS RUTAS SUPERIORES (../)
+# ========================================
+# Esto evita que Git suba archivos de carpetas padre que NO son parte del proyecto
+../*
