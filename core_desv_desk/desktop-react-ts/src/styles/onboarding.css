@@ -1,0 +1,387 @@
+/* ============================================================================
+   FrEDie Onboarding — Pure CSS (no Tailwind)
+   Recomendación: envolver onboarding con .onboarding-scope
+   ============================================================================ */
+
+.onboarding-scope{
+  /* Fondo gris sólido (más neutro, menos azul) */
+  --onboarding-bg: 220 9% 11%;
+
+  /* Tarjetas más grisáceas y un poco más claras que el fondo */
+  --onboarding-card: 220 6% 18%;
+  --onboarding-card-hover: 220 6% 20%;
+  --onboarding-card-selected: 220 6% 22%;
+
+  /* Bordes un poco más visibles para separar bien del fondo */
+  --onboarding-border: 220 6% 28%;
+  --onboarding-border-selected: 220 8% 70%;
+
+  /* Texto igual (solo por claridad, puedes dejar tus valores si ya te gustan) */
+  --onboarding-text-primary: 0 0% 98%;
+  --onboarding-text-secondary: 220 10% 78%;
+  --onboarding-text-muted: 220 8% 58%;
+
+  /* Accent neutro (íconos nada rosas) */
+  --onboarding-accent: 0 0% 92%;
+  --onboarding-accent-glow: 0 0% 96%;
+}
+
+/* Quita cualquier sombra que pueda quedar en tarjetas */
+.onboarding-scope .bg-onboarding-card{
+  box-shadow: none !important;
+}
+
+/* Optional light mode inside onboarding only */
+.onboarding-scope.light {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 222.2 84% 4.9%;
+}
+
+/* ===========================
+   Progress (dots + active pill)
+   =========================== */
+
+.onbProgress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.onbProgressItem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 10px;
+}
+
+.onbProgressDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background-color: hsl(var(--onboarding-progress-bg));
+  opacity: 0.55;
+  transition: background-color 200ms ease, opacity 200ms ease;
+}
+
+.onbProgressDot.isCompleted {
+  background-color: hsl(var(--onboarding-progress-active));
+  opacity: 0.8;
+}
+
+.onbProgressActive {
+  height: 8px;
+  border-radius: 9999px;
+  background-color: hsl(var(--onboarding-progress-active));
+}
+
+/* ============================================================================
+   Utility-like classes
+   ============================================================================ */
+
+/* Backgrounds */
+.bg-onboarding-bg {
+  background-color: hsl(var(--onboarding-bg));
+  background-image: none;
+}
+.bg-onboarding-card { background-color: hsl(var(--onboarding-card)); }
+.bg-onboarding-card-hover { background-color: hsl(var(--onboarding-card-hover)); }
+.bg-onboarding-card-selected { background-color: hsl(var(--onboarding-card-selected)); }
+
+/* Borders */
+.border-onboarding-border { border-color: hsl(var(--onboarding-border)); }
+.border-onboarding-border-selected { border-color: hsl(var(--onboarding-border-selected)); }
+
+/* Text */
+.text-onboarding-text-primary { color: hsl(var(--onboarding-text-primary)); }
+.text-onboarding-text-secondary { color: hsl(var(--onboarding-text-secondary)); }
+.text-onboarding-text-muted { color: hsl(var(--onboarding-text-muted)); }
+
+/* Accent */
+.text-onboarding-accent { color: hsl(var(--onboarding-accent)); }
+.bg-onboarding-accent { background-color: hsl(var(--onboarding-accent)); }
+
+/* Progress */
+.bg-onboarding-progress-bg { background-color: hsl(var(--onboarding-progress-bg)); }
+.bg-onboarding-progress-active { background-color: hsl(var(--onboarding-progress-active)); }
+
+/* Destructive */
+.text-destructive { color: hsl(var(--destructive)); }
+
+/* ============================================================================
+   Common layout helpers
+   ============================================================================ */
+
+.onboarding-scope .flex { display: flex; }
+.onboarding-scope .items-center { align-items: center; }
+.onboarding-scope .items-start { align-items: flex-start; }
+.onboarding-scope .justify-center { justify-content: center; }
+.onboarding-scope .justify-between { justify-content: space-between; }
+.onboarding-scope .flex-col { flex-direction: column; }
+.onboarding-scope .flex-1 { flex: 1 1 0%; }
+.onboarding-scope .w-full { width: 100%; }
+.onboarding-scope .h-full { height: 100%; }
+.onboarding-scope .min-w-0 { min-width: 0; }
+.onboarding-scope .max-w-sm { max-width: 24rem; }
+.onboarding-scope .max-w-md { max-width: 28rem; }
+.onboarding-scope .max-w-lg { max-width: 32rem; }
+.onboarding-scope .max-w-xl { max-width: 36rem; }
+.onboarding-scope .max-w-2xl { max-width: 42rem; }
+.onboarding-scope .mx-auto { margin-left: auto; margin-right: auto; }
+.onboarding-scope .text-center { text-align: center; }
+.onboarding-scope .text-left { text-align: left; }
+
+/* Spacing */
+.onboarding-scope .gap-2 { gap: 0.5rem; }
+.onboarding-scope .gap-3 { gap: 0.75rem; }
+.onboarding-scope .gap-4 { gap: 1rem; }
+.onboarding-scope .gap-6 { gap: 1.5rem; }
+.onboarding-scope .gap-8 { gap: 2rem; }
+
+.onboarding-scope .pt-8 { padding-top: 2rem; }
+.onboarding-scope .pb-4 { padding-bottom: 1rem; }
+.onboarding-scope .pb-8 { padding-bottom: 2rem; }
+.onboarding-scope .pt-4 { padding-top: 1rem; }
+.onboarding-scope .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+.onboarding-scope .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+.onboarding-scope .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.onboarding-scope .px-4 { padding-left: 1rem; padding-right: 1rem; }
+.onboarding-scope .px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
+.onboarding-scope .p-4 { padding: 1rem; }
+.onboarding-scope .p-5 { padding: 1.25rem; }
+.onboarding-scope .mb-1 { margin-bottom: 0.25rem; }
+.onboarding-scope .mb-3 { margin-bottom: 0.75rem; }
+.onboarding-scope .mb-4 { margin-bottom: 1rem; }
+.onboarding-scope .mb-6 { margin-bottom: 1.5rem; }
+.onboarding-scope .mb-8 { margin-bottom: 2rem; }
+.onboarding-scope .mt-0\.5 { margin-top: 0.125rem; }
+.onboarding-scope .mt-2 { margin-top: 0.5rem; }
+.onboarding-scope .mt-3 { margin-top: 0.75rem; }
+.onboarding-scope .mt-6 { margin-top: 1.5rem; }
+.onboarding-scope .space-y-4 > * + * { margin-top: 1rem; }
+.onboarding-scope .space-y-6 > * + * { margin-top: 1.5rem; }
+
+/* Typography */
+.onboarding-scope .text-xs { font-size: 0.75rem; line-height: 1rem; }
+.onboarding-scope .text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+.onboarding-scope .text-base { font-size: 1rem; line-height: 1.5rem; }
+.onboarding-scope .text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+.onboarding-scope .text-4xl { font-size: 2.25rem; line-height: 2.5rem; }
+.onboarding-scope .font-medium { font-weight: 500; }
+.onboarding-scope .font-semibold { font-weight: 600; }
+.onboarding-scope .uppercase { text-transform: uppercase; }
+.onboarding-scope .tracking-\[0\.3em\] { letter-spacing: 0.3em; }
+.onboarding-scope .tracking-wider { letter-spacing: 0.05em; }
+
+/* Borders/radius */
+.onboarding-scope .border { border-width: 1px; border-style: solid; }
+.onboarding-scope .rounded-full { border-radius: 9999px; }
+.onboarding-scope .rounded-lg { border-radius: 0.5rem; }
+.onboarding-scope .rounded-xl { border-radius: 0.75rem; }
+
+/* Grid */
+.onboarding-scope .grid { display: grid; }
+.onboarding-scope .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+.onboarding-scope .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.onboarding-scope .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* Buttons */
+.onboarding-scope button { font: inherit; }
+.onboarding-scope .transition-colors {
+  transition: color 200ms ease, background-color 200ms ease, border-color 200ms ease;
+}
+.onboarding-scope .transition-all { transition: all 300ms ease; }
+.onboarding-scope .duration-300 { transition-duration: 300ms; }
+
+/* Disabled states used in buttons */
+.onboarding-scope .disabled\:opacity-50:disabled { opacity: 0.5; }
+.onboarding-scope .disabled\:cursor-not-allowed:disabled { cursor: not-allowed; }
+
+/* ============================================================================
+   Inputs
+   ============================================================================ */
+
+.onboarding-scope input {
+  background-color: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.10);
+  box-shadow: none;
+}
+
+.onboarding-scope input:focus {
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: none;
+}
+
+/* ============================================================================
+   Animations
+   ============================================================================ */
+
+.animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+.animate-slide-up { animation: slideUp 0.5s ease-out forwards; }
+.animate-slide-down { animation: slideDown 0.5s ease-out forwards; }
+.animate-scale-in { animation: scaleIn 0.3s ease-out forwards; }
+.animate-progress-fill { animation: progressFill 0.6s ease-out forwards; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes progressFill {
+  from { width: 0; }
+}
+
+/* ===========================
+   Header/Brand + Footer/Byline
+   =========================== */
+
+.onbHeader {
+  position: relative;
+  padding-top: 32px;
+  padding-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.onbBrand {
+  position: absolute;
+  left: 24px;
+  top: 30px;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: hsl(var(--onboarding-text-muted));
+  opacity: 0.75;
+  user-select: none;
+}
+
+.onbNav {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.onbNavSpacer {
+  width: 48px;
+  display: inline-block;
+}
+
+.onbFooter {
+  position: relative;
+  padding-top: 16px;
+  padding-bottom: 32px;
+}
+
+.onbByline {
+  position: absolute;
+  right: 24px;
+  bottom: 18px;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: rgba(255, 255, 255, 0.38);
+  opacity: 0.95;
+  user-select: none;
+  pointer-events: none;
+  filter: none;
+}
+
+@media (max-width: 520px) {
+  .onbBrand { left: 16px; top: 24px; }
+  .onbByline { right: 16px; bottom: 14px; }
+}
+
+/* ===========================
+   Buttons (compact + sober)
+   =========================== */
+
+.onbBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  padding: 10px 16px;
+  border-radius: 12px;
+
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  cursor: pointer;
+
+  transition: transform 160ms ease, background-color 160ms ease,
+    border-color 160ms ease, opacity 160ms ease;
+  box-shadow: none;
+}
+
+.onbBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.onbBtnPrimary {
+  background: hsl(var(--onboarding-text-primary));
+  color: hsl(var(--onboarding-bg));
+  border-color: rgba(255, 255, 255, 0.10);
+}
+
+.onbBtnPrimary:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.onbBtnPrimary:active:not(:disabled) {
+  transform: translateY(0px);
+}
+
+.onbBtnSecondary {
+  background: rgba(255, 255, 255, 0.03);
+  color: hsl(var(--onboarding-text-primary));
+  border-color: rgba(255, 255, 255, 0.10);
+}
+
+.onbBtnSecondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+.onbBtnSpinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+}
+
+.onboarding-scope button.bg-onboarding-text-primary {
+  color: rgba(198, 198, 198, 0.92) !important;
+}
+.onboarding-scope svg.text-onboarding-bg {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
