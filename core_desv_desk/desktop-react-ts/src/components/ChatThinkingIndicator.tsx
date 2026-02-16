@@ -2,7 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Orbit } from "lucide-react";
 
-import "../styles/chat-variant.css";
+import "../styles/ask.css";
 
 type ChatThinkingIndicatorProps = {
   label?: string;

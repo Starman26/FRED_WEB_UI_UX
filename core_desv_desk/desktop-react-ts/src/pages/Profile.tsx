@@ -1,354 +1,456 @@
 // src/pages/Profile.tsx
-import { useEffect, useRef, useState } from "react";
-import { Camera, Loader2 } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Menu, Plus, X, Camera, Loader2, Save, User, Mail, Building2, GraduationCap, Shield } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
-import { useAuth } from "../context/AuthContext";
+import "../styles/profile-ui.css";
+
+const ROOT_COLLAPSED_CLASS = "cora-sidebar-collapsed";
+const LS_KEY = "cora.sidebarCollapsed";
 
 type LearningStyle = "visual" | "auditivo" | "kinestesico" | "mixto";
 
-type StudentRow = {
-  full_name: string | null;
-  email: string | null;
-  career: string | null;
-  semester: number | null;
-  learning_style: { mode?: LearningStyle } | null;
-  avatar_url: string | null;
-};
-
-type AppUserRow = {
-  role: "admin_equipos" | "laboratorista" | null;
+// Matches public.profiles table exactly
+type ProfileRow = {
+  id: string;                       // uuid PK
+  auth_user_id: string;             // uuid
+  email: string | null;             // text
+  full_name: string | null;         // text
+  career: string | null;            // text
+  semester: number | null;          // int4
+  skills: string[] | null;          // _text (text[])
+  goals: string[] | null;           // _text (text[])
+  interests: string[] | null;       // _text (text[])
+  learning_style: { mode?: LearningStyle } | null; // jsonb
+  last_seen: string | null;         // timestamptz
+  onboarding_completed: boolean | null; // bool
+  created_at: string | null;        // timestamptz
+  updated_at: string | null;        // timestamptz
+  active_team_id: string | null;    // uuid
+  learning_profile_text: string | null; // text
 };
 
 const AVATARS_BUCKET = "avatars";
 
-export default function ProfilePage() {
-  const { user } = useAuth();
+async function loadHeaderProfile(user: any): Promise<{ name: string; role: string | null }> {
+  if (!user) return { name: "", role: null };
+  let baseName = user.email?.split("@")[0] ?? "";
+  let role: string | null = null;
 
-  const [profile, setProfile] = useState<StudentRow | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [roleLabel, setRoleLabel] = useState<string>("Sin rol asignado");
+  const { data: profileData } = await supabase
+    .from("profiles")
+    .select("full_name, active_team_id")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  // Campos editables
-  const [career, setCareer] = useState("");
-  const [semester, setSemester] = useState<number | "">("");
-  const [learningStyle, setLearningStyle] = useState<LearningStyle>("visual");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
-  // ==========================
-  // Cargar perfil + rol
-  // ==========================
-  useEffect(() => {
-    async function loadProfile() {
-      if (!user) return;
-      setLoading(true);
-
-      const { data, error } = await supabase
-        .from("students")
-        .select(
-          "full_name, email, career, semester, learning_style, avatar_url"
-        )
-        .eq("auth_user_id", user.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error("Error cargando perfil:", error);
-        setLoading(false);
-        return;
-      }
-
-      const row: StudentRow = {
-        full_name: data?.full_name ?? user.email ?? "",
-        email: data?.email ?? user.email ?? "",
-        career: data?.career ?? "",
-        semester: data?.semester ?? null,
-        learning_style: data?.learning_style ?? { mode: "visual" },
-        avatar_url: data?.avatar_url ?? null,
-      };
-
-      setProfile(row);
-      setCareer(row.career ?? "");
-      setSemester(row.semester ?? "");
-      setLearningStyle(
-        (row.learning_style?.mode as LearningStyle) || "visual"
-      );
-      setAvatarUrl(row.avatar_url);
-
-      const { data: appUser, error: appUserError } = await supabase
-        .from("app_user")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle<AppUserRow>();
-
-      if (appUserError) {
-        console.error("Error cargando rol en Profile:", appUserError);
-        setRoleLabel("Sin rol asignado");
-      } else {
-        const role = appUser?.role;
-        if (role === "admin_equipos") setRoleLabel("Administrador de equipos");
-        else if (role === "laboratorista") setRoleLabel("Laboratorista");
-        else setRoleLabel("Sin rol asignado");
-      }
-
-      setLoading(false);
-    }
-
-    loadProfile();
-  }, [user]);
-
-  const fullName = profile?.full_name || user?.email || "";
-  const email = profile?.email || user?.email || "";
-  const initial =
-    fullName?.trim()?.charAt(0)?.toUpperCase() ||
-    email?.trim()?.charAt(0)?.toUpperCase() ||
-    "?";
-
-  // ==========================
-  // Guardar perfil
-  // ==========================
-  const handleSave = async () => {
-    if (!user) return;
-    setSaving(true);
-
-    const { error } = await supabase
-      .from("students")
-      .update({
-        career: career || null,
-        semester: semester === "" ? null : Number(semester),
-        learning_style: { mode: learningStyle },
-      })
-      .eq("auth_user_id", user.id);
-
-    if (error) {
-      console.error("Error guardando perfil:", error);
-    }
-
-    setSaving(false);
-  };
-
-  // ==========================
-  // Avatar
-  // ==========================
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleAvatarChange = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    if (!user) return;
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      setUploadingAvatar(true);
-
-      const ext = file.name.split(".").pop() || "png";
-      const filePath = `${user.id}/${Date.now()}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from(AVATARS_BUCKET)
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) {
-        console.error("[Avatar] Error subiendo avatar:", uploadError);
-        alert("No se pudo subir la imagen de perfil.");
-        setUploadingAvatar(false);
-        return;
-      }
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from(AVATARS_BUCKET).getPublicUrl(filePath);
-
-      const { error: updateError } = await supabase
-        .from("students")
-        .update({ avatar_url: publicUrl })
-        .eq("auth_user_id", user.id);
-
-      if (updateError) {
-        console.error("[Avatar] Error actualizando avatar_url:", updateError);
-        alert("La imagen se subió pero no se pudo guardar en tu perfil.");
-        setUploadingAvatar(false);
-        return;
-      }
-
-      setAvatarUrl(publicUrl);
-    } finally {
-      setUploadingAvatar(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
-  // ==========================
-  // Loading
-  // ==========================
-  if (loading) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="flex items-center gap-2 text-gray-500 text-sm">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          <span>Cargando perfil…</span>
-        </div>
-      </div>
-    );
+  if (profileData?.full_name) {
+    const parts = profileData.full_name.trim().split(/\s+/);
+    baseName = parts[0] || baseName;
   }
 
-  // ==========================
-  // UI
-  // ==========================
-  return (
-    <div className="space-y-6">
-      {/* HEADER PÁGINA */}
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Mi perfil</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Administra tus datos y cómo FrEDie se adapta a tu forma de aprender.
-          </p>
-        </div>
+  if (profileData?.active_team_id) {
+    const { data: membershipData } = await supabase
+      .from("team_memberships")
+      .select("role")
+      .eq("auth_user_id", user.id)
+      .eq("team_id", profileData.active_team_id)
+      .maybeSingle();
+    if (membershipData?.role) role = membershipData.role;
+  }
 
-        <div className="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-xs text-emerald-700 font-medium">
-          {roleLabel}
+  return { name: baseName, role };
+}
+
+function AgentIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <circle cx="6" cy="9" r="5.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
+      <circle cx="12" cy="9" r="4.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    </svg>
+  );
+}
+
+// ============================================================================
+// HEADER
+// ============================================================================
+
+interface ProfileHeaderProps {
+  userName: string;
+  userRole: string;
+  userError?: string | null;
+  onChangeAgent?: () => void;
+}
+
+function ProfileHeader({ userName, userRole, userError, onChangeAgent }: ProfileHeaderProps) {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem(LS_KEY) === "1"; } catch { return false; }
+  });
+  const [credits] = useState(10000);
+  const maxCredits = 10000;
+  const [showCreditsModal, setShowCreditsModal] = useState(false);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailContext, setEmailContext] = useState("");
+
+  useEffect(() => {
+    if (sidebarCollapsed) document.documentElement.classList.add(ROOT_COLLAPSED_CLASS);
+    else document.documentElement.classList.remove(ROOT_COLLAPSED_CLASS);
+  }, [sidebarCollapsed]);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(LS_KEY, next ? "1" : "0"); } catch {}
+      if (next) document.documentElement.classList.add(ROOT_COLLAPSED_CLASS);
+      else document.documentElement.classList.remove(ROOT_COLLAPSED_CLASS);
+      window.dispatchEvent(new CustomEvent("cora:sidebar-toggle", { detail: { collapsed: next } }));
+      return next;
+    });
+  }, []);
+
+  const handleSendRequest = () => {
+    setEmailSubject(""); setEmailContext(""); setShowCreditsModal(false);
+  };
+
+  const displayName = userName || "User";
+  const displayRole = userRole || null;
+  const creditsPercentage = (credits / maxCredits) * 100;
+
+  return (
+    <>
+      <header className="prof_header">
+        <div className="prof_headerLeft">
+          <button type="button" onClick={toggleSidebar} className="prof_menuBtn" aria-label="Toggle sidebar">
+            <Menu size={18} />
+          </button>
+          <div className="prof_headerDivider" />
+          <div className="prof_userInfo">
+            <span className="prof_pageName">My Profile</span>
+            <span className="prof_pathSeparator">/</span>
+            <span className="prof_userName">{displayName}</span>
+            {displayRole && (
+              <>
+                <span className="prof_userSeparator">/</span>
+                <span className="prof_userRole">{displayRole}</span>
+              </>
+            )}
+          </div>
+          {userError && <span className="prof_userError">({userError})</span>}
+          <div className="prof_creditsContainer">
+            <div className="prof_creditsBar">
+              <div className="prof_creditsFill" style={{ width: `${creditsPercentage}%` }} />
+            </div>
+            <span className="prof_creditsText">{credits.toLocaleString()} Credits Left</span>
+            <button type="button" className="prof_creditsAddBtn" onClick={() => setShowCreditsModal(true)}>
+              <Plus size={14} />
+            </button>
+          </div>
+        </div>
+        <div className="prof_headerRight">
+          <button type="button" className="prof_changeAgentBtn" onClick={onChangeAgent}>
+            <AgentIcon /><span>Change agent</span>
+          </button>
+          <div className="prof_headerDivider" />
+          <button type="button" className="prof_headerBtn">Feedback</button>
+          <button type="button" className="prof_headerBtn">Docs</button>
         </div>
       </header>
 
-      {/* CONTENIDO PRINCIPAL */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Columna izquierda: avatar + info básica */}
-        <section className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 lg:col-span-1">
-          <div className="flex flex-col items-center gap-4">
-            <div className="relative">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt="Foto de perfil"
-                  className="w-28 h-28 rounded-full object-cover bg-gray-100"
-                />
-              ) : (
-                <div className="w-28 h-28 rounded-full bg-emerald-700 flex items-center justify-center text-3xl font-semibold text-white">
-                  {initial}
+      {showCreditsModal && (
+        <div className="prof_modalOverlay" onClick={() => setShowCreditsModal(false)}>
+          <div className="prof_creditsModal" onClick={(e) => e.stopPropagation()}>
+            <div className="prof_creditsModalHeader">
+              <h2>Request More Tokens</h2>
+              <button type="button" className="prof_creditsModalClose" onClick={() => setShowCreditsModal(false)}><X size={18} /></button>
+            </div>
+            <p className="prof_creditsModalDesc">Need more tokens? Send us a request.</p>
+            <div className="prof_creditsModalForm">
+              <div className="prof_creditsModalField">
+                <label htmlFor="prof-subj">Subject</label>
+                <input id="prof-subj" type="text" value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} placeholder="e.g., Additional token request" />
+              </div>
+              <div className="prof_creditsModalField">
+                <label htmlFor="prof-ctx">Context</label>
+                <textarea id="prof-ctx" value={emailContext} onChange={(e) => setEmailContext(e.target.value)} placeholder="Describe your needs..." rows={4} />
+              </div>
+              <div className="prof_creditsModalActions">
+                <button type="button" className="prof_creditsModalCancel" onClick={() => setShowCreditsModal(false)}>Cancel</button>
+                <button type="button" className="prof_creditsModalSubmit" onClick={handleSendRequest} disabled={!emailSubject.trim() || !emailContext.trim()}>Send Request</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ============================================================================
+// PROFILE PAGE — reads/writes from public.profiles
+// ============================================================================
+
+export default function ProfilePage() {
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userName, setUserName] = useState("");
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userLoadError, setUserLoadError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Fields from profiles table
+  const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [career, setCareer] = useState("");
+  const [semester, setSemester] = useState<number | "">("");
+  const [skills, setSkills] = useState("");
+  const [goals, setGoals] = useState("");
+  const [interests, setInterests] = useState("");
+  const [learningStyle, setLearningStyle] = useState<LearningStyle>("visual");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [memberRole, setMemberRole] = useState<string | null>(null);
+
+  // ── Load from public.profiles ──
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (!alive) return;
+      if (authErr || !authData?.user) { setUserLoadError("Not authenticated"); setLoading(false); return; }
+      const user = authData.user;
+      setUserId(user.id);
+
+      // Header info
+      try {
+        const hp = await loadHeaderProfile(user);
+        if (!alive) return;
+        setUserName(hp.name);
+        setUserRole(hp.role);
+        setMemberRole(hp.role);
+      } catch { if (alive) setUserLoadError("Error loading profile"); }
+
+      // Read from profiles table
+      const { data: row, error: profErr } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("auth_user_id", user.id)
+        .maybeSingle<ProfileRow>();
+
+      if (profErr) {
+        console.error("Error loading profile:", profErr);
+        if (alive) setLoading(false);
+        return;
+      }
+
+      if (alive && row) {
+        setEmail(row.email ?? user.email ?? "");
+        setFullName(row.full_name ?? "");
+        setCareer(row.career ?? "");
+        setSemester(row.semester ?? "");
+        setSkills(Array.isArray(row.skills) ? row.skills.join(", ") : "");
+        setGoals(Array.isArray(row.goals) ? row.goals.join(", ") : "");
+        setInterests(Array.isArray(row.interests) ? row.interests.join(", ") : "");
+        setLearningStyle((row.learning_style as any)?.mode ?? "visual");
+        // avatar_url not in profiles table — skip for now
+      } else if (alive) {
+        setEmail(user.email ?? "");
+      }
+
+      if (alive) setLoading(false);
+    };
+    load();
+    return () => { alive = false; };
+  }, []);
+
+  const displayName = fullName?.trim() || email?.split("@")[0] || "";
+  const initial = displayName.charAt(0).toUpperCase() || "?";
+
+  const roleLabel = memberRole === "admin_equipos"
+    ? "Team Admin"
+    : memberRole === "laboratorista"
+    ? "Lab Technician"
+    : memberRole || "No role assigned";
+
+  // ── Save to public.profiles ──
+  const handleSave = async () => {
+    if (!userId) return;
+    setSaving(true); setSaveSuccess(false);
+
+    // Convert comma-separated strings to arrays
+    const toArray = (s: string) => s ? s.split(",").map((v) => v.trim()).filter(Boolean) : null;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        full_name: fullName || null,
+        career: career || null,
+        semester: semester === "" ? null : Number(semester),
+        skills: toArray(skills),
+        goals: toArray(goals),
+        interests: toArray(interests),
+        learning_style: { mode: learningStyle },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("auth_user_id", userId);
+
+    if (!error) {
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
+    } else {
+      console.error("Error saving profile:", error);
+    }
+    setSaving(false);
+  };
+
+  // ── Avatar (stored in Supabase Storage, URL saved to profiles if column exists) ──
+  const handleAvatarClick = () => fileInputRef.current?.click();
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!userId) return;
+    const file = e.target.files?.[0]; if (!file) return;
+    try {
+      setUploadingAvatar(true);
+      const ext = file.name.split(".").pop() || "png";
+      const filePath = `${userId}/${Date.now()}.${ext}`;
+      const { error: ue } = await supabase.storage.from(AVATARS_BUCKET).upload(filePath, file, { upsert: true });
+      if (ue) { console.error("Upload error:", ue); setUploadingAvatar(false); return; }
+      const { data: { publicUrl } } = supabase.storage.from(AVATARS_BUCKET).getPublicUrl(filePath);
+      setAvatarUrl(publicUrl);
+    } finally { setUploadingAvatar(false); if (fileInputRef.current) fileInputRef.current.value = ""; }
+  };
+
+  // ── Render ──
+  return (
+    <div className="prof_root">
+      <ProfileHeader userName={userName} userRole={userRole || ""} userError={userLoadError} onChangeAgent={() => {}} />
+
+      <main className="prof_content">
+        {loading ? (
+          <div className="prof_loadingWrapper">
+            <Loader2 size={18} className="prof_spin" />
+            <span>Loading profile...</span>
+          </div>
+        ) : (
+          <div className="prof_grid">
+            {/* Left: Avatar card */}
+            <div className="prof_left">
+              <div className="prof_card prof_avatarCard">
+                <div className="prof_avatarWrapper">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="Profile" className="prof_avatarImg" />
+                  ) : (
+                    <div className="prof_avatarFallback">{initial}</div>
+                  )}
+                  <button type="button" onClick={handleAvatarClick} disabled={uploadingAvatar} className="prof_avatarBtn">
+                    {uploadingAvatar ? <Loader2 size={14} className="prof_spin" /> : <Camera size={14} />}
+                  </button>
+                  <input ref={fileInputRef} type="file" accept="image/*" className="prof_hidden" onChange={handleAvatarChange} />
                 </div>
-              )}
+                <h2 className="prof_displayName">{displayName}</h2>
+                <p className="prof_email">{email}</p>
+                <div className="prof_roleBadge"><Shield size={12} /><span>{roleLabel}</span></div>
+              </div>
+            </div>
 
-              <button
-                type="button"
-                onClick={handleAvatarClick}
-                disabled={uploadingAvatar}
-                className="absolute -bottom-1 -right-1 w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center shadow-sm hover:bg-gray-50 transition"
-              >
-                {uploadingAvatar ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-gray-700" />
-                ) : (
-                  <Camera className="w-4 h-4 text-gray-700" />
+            {/* Right: Settings cards */}
+            <div className="prof_right">
+              {/* Personal */}
+              <div className="prof_card">
+                <div className="prof_cardHeader">
+                  <h3 className="prof_cardTitle">Personal Information</h3>
+                  <p className="prof_cardDesc">Basic profile details</p>
+                </div>
+                <div className="prof_fieldGrid">
+                  <div className="prof_field">
+                    <label className="prof_label"><User size={13} /> Full Name</label>
+                    <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" className="prof_input" />
+                  </div>
+                  <div className="prof_field">
+                    <label className="prof_label"><Mail size={13} /> Email</label>
+                    <input type="email" value={email} disabled className="prof_input prof_input--disabled" />
+                    <span className="prof_hint">Managed by auth provider</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Academic */}
+              <div className="prof_card">
+                <div className="prof_cardHeader">
+                  <h3 className="prof_cardTitle">Academic Details</h3>
+                  <p className="prof_cardDesc">Used to personalize your experience</p>
+                </div>
+                <div className="prof_fieldGrid">
+                  <div className="prof_field">
+                    <label className="prof_label"><Building2 size={13} /> Career / Program</label>
+                    <input type="text" value={career} onChange={(e) => setCareer(e.target.value)} placeholder="e.g. IMT, BME, IMD" className="prof_input" />
+                  </div>
+                  <div className="prof_field">
+                    <label className="prof_label"><GraduationCap size={13} /> Semester</label>
+                    <input type="number" min={1} max={20} value={semester} onChange={(e) => setSemester(e.target.value === "" ? "" : Number(e.target.value))} placeholder="e.g. 5" className="prof_input" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Skills, Goals, Interests */}
+              <div className="prof_card">
+                <div className="prof_cardHeader">
+                  <h3 className="prof_cardTitle">Skills, Goals & Interests</h3>
+                  <p className="prof_cardDesc">Separate multiple values with commas</p>
+                </div>
+                <div className="prof_fieldStack">
+                  <div className="prof_field">
+                    <label className="prof_label">Skills</label>
+                    <input type="text" value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="e.g. Python, CAD, Statistics" className="prof_input" />
+                  </div>
+                  <div className="prof_field">
+                    <label className="prof_label">Goals</label>
+                    <input type="text" value={goals} onChange={(e) => setGoals(e.target.value)} placeholder="e.g. Graduate with honors, Learn ML" className="prof_input" />
+                  </div>
+                  <div className="prof_field">
+                    <label className="prof_label">Interests</label>
+                    <input type="text" value={interests} onChange={(e) => setInterests(e.target.value)} placeholder="e.g. Robotics, AI, Sustainability" className="prof_input" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Learning Style */}
+              <div className="prof_card">
+                <div className="prof_cardHeader">
+                  <h3 className="prof_cardTitle">Learning Style</h3>
+                  <p className="prof_cardDesc">Sentinela adapts responses based on your preference</p>
+                </div>
+                <div className="prof_styleGrid">
+                  {([
+                    { value: "visual" as LearningStyle, label: "Visual", desc: "Diagrams, charts, visual aids" },
+                    { value: "auditivo" as LearningStyle, label: "Auditory", desc: "Verbal explanations, discussions" },
+                    { value: "kinestesico" as LearningStyle, label: "Kinesthetic", desc: "Hands-on exercises, practice" },
+                    { value: "mixto" as LearningStyle, label: "Mixed", desc: "Combination of all styles" },
+                  ]).map((s) => (
+                    <button key={s.value} type="button" className={`prof_styleOption ${learningStyle === s.value ? "is-selected" : ""}`} onClick={() => setLearningStyle(s.value)}>
+                      <span className="prof_styleLabel">{s.label}</span>
+                      <span className="prof_styleDesc">{s.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Save */}
+              <div className="prof_saveBar">
+                {saveSuccess && (
+                  <span className="prof_saveSuccess">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                    Changes saved
+                  </span>
                 )}
-              </button>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAvatarChange}
-              />
-            </div>
-
-            <div className="text-center space-y-1">
-              <p className="text-base font-semibold text-gray-900">
-                {fullName}
-              </p>
-              <p className="text-sm text-gray-500">{email}</p>
-              <p className="text-xs text-gray-400">
-                Tu rol en la plataforma define qué herramientas ves en FrEDie.
-              </p>
+                <button type="button" onClick={handleSave} disabled={saving} className="prof_saveBtn">
+                  {saving ? <Loader2 size={15} className="prof_spin" /> : <Save size={15} />}
+                  {saving ? "Saving..." : "Save changes"}
+                </button>
+              </div>
             </div>
           </div>
-        </section>
-
-        {/* Columna derecha: datos académicos y estilo de aprendizaje */}
-        <section className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 lg:col-span-2">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">
-            Preferencias académicas
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Carrera */}
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">
-                Carrera
-              </label>
-              <input
-                type="text"
-                value={career}
-                onChange={(e) => setCareer(e.target.value)}
-                placeholder="Ej. IMT, BME, IMD…"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-600 focus:border-emerald-600"
-              />
-            </div>
-
-            {/* Semestre */}
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">
-                Semestre
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={20}
-                value={semester}
-                onChange={(e) =>
-                  setSemester(
-                    e.target.value === "" ? "" : Number(e.target.value)
-                  )
-                }
-                placeholder="Ej. 5"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-600 focus:border-emerald-600"
-              />
-            </div>
-          </div>
-
-          {/* Estilo de aprendizaje */}
-          <div className="mt-4">
-            <label className="block text-xs font-medium text-gray-500 mb-1">
-              Estilo de aprendizaje
-            </label>
-            <select
-              value={learningStyle}
-              onChange={(e) =>
-                setLearningStyle(e.target.value as LearningStyle)
-              }
-              className="w-full md:w-1/2 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-600 focus:border-emerald-600"
-            >
-              <option value="visual">Visual</option>
-              <option value="auditivo">Auditivo</option>
-              <option value="kinestesico">Kinestésico</option>
-              <option value="mixto">Mixto</option>
-            </select>
-            <p className="mt-1 text-xs text-gray-400">
-              FrEDie puede ajustar ejemplos, tipo de explicaciones y ritmo
-              tomando en cuenta esta preferencia.
-            </p>
-          </div>
-
-          {/* Botón guardar */}
-          <div className="mt-6 flex justify-end">
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {saving && (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin text-white" />
-              )}
-              {saving ? "Guardando…" : "Guardar cambios"}
-            </button>
-          </div>
-        </section>
-      </div>
+        )}
+      </main>
     </div>
   );
 }

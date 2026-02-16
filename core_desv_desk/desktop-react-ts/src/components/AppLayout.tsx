@@ -33,6 +33,7 @@ export function AppLayout() {
     path.startsWith("projects") ||
     path.startsWith("config") ||
     path.startsWith("living") ||
+    path.startsWith("profile") ||
     path === "" ||
     path === "/";
 

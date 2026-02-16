@@ -15,7 +15,7 @@ import { supabase } from "../lib/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import labLogo from "@/assets/living-lab-icon.png";
 
-import "../styles/living-lab.css";
+import "../styles/livinglab.css";
 
 type Device = {
   id: string;

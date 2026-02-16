@@ -1,10 +1,12 @@
 import {
   useState,
+  useEffect,
+  useRef,
   InputHTMLAttributes,
   forwardRef,
   ReactNode,
 } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import "../styles/onboarding.css";
 
@@ -36,8 +38,240 @@ interface LearningStyle {
   prefersStepByStep: boolean;
 }
 
-// Roles (en team_memberships.role)
 type TeamRole = "admin" | "lab_researcher";
+
+// ============================================================================
+// PARTICLE GRID - Dot grid with mouse repulsion effect
+// ============================================================================
+
+interface Dot {
+  x: number;
+  y: number;
+  baseX: number;
+  baseY: number;
+}
+
+function ParticleGrid() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const mouseRef = useRef({ x: -200, y: -200 });
+  const targetRef = useRef({ x: -200, y: -200 });
+  const dotsRef = useRef<Dot[]>([]);
+  const animationRef = useRef<number | null>(null);
+  const isOverInteractiveRef = useRef(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Configuración - Deformación muy aumentada
+    const GRID_SPACING = 18;
+    const INFLUENCE_RADIUS = 200;
+    const PUSH_STRENGTH = 50;
+
+    const setupCanvas = () => {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.height = `${window.innerHeight}px`;
+      ctx.scale(dpr, dpr);
+
+      const dots: Dot[] = [];
+      for (let x = 0; x < window.innerWidth + GRID_SPACING; x += GRID_SPACING) {
+        for (let y = 0; y < window.innerHeight + GRID_SPACING; y += GRID_SPACING) {
+          dots.push({ x, y, baseX: x, baseY: y });
+        }
+      }
+      dotsRef.current = dots;
+    };
+
+    setupCanvas();
+
+    const checkInteractiveElement = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const interactiveSelectors = ['button', 'input', 'textarea', 'a', 'select', '[role="button"]', '.toggle-link'];
+      const isInteractive = interactiveSelectors.some(selector => 
+        target.matches(selector) || target.closest(selector)
+      );
+      isOverInteractiveRef.current = isInteractive;
+      document.body.style.cursor = isInteractive ? 'auto' : 'none';
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      targetRef.current = { x: e.clientX, y: e.clientY };
+      checkInteractiveElement(e);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        targetRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+    };
+
+    const handleMouseLeave = () => {
+      targetRef.current = { x: -200, y: -200 };
+      document.body.style.cursor = 'auto';
+    };
+
+    const handleResize = () => {
+      setupCanvas();
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("touchmove", handleTouchMove);
+    window.addEventListener("mouseleave", handleMouseLeave);
+    window.addEventListener("resize", handleResize);
+
+    const animate = () => {
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+      const ease = 0.15;
+      mouseRef.current.x += (targetRef.current.x - mouseRef.current.x) * ease;
+      mouseRef.current.y += (targetRef.current.y - mouseRef.current.y) * ease;
+
+      const { x: mx, y: my } = mouseRef.current;
+      const dots = dotsRef.current;
+
+      for (let i = 0; i < dots.length; i++) {
+        const dot = dots[i];
+
+        const dx = dot.baseX - mx;
+        const dy = dot.baseY - my;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // Calcular distancia al centro de la pantalla para el degradado
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        const dxCenter = dot.baseX - centerX;
+        const dyCenter = dot.baseY - centerY;
+        const distToCenter = Math.sqrt(dxCenter * dxCenter + dyCenter * dyCenter);
+        const maxDistFromCenter = Math.sqrt(centerX * centerX + centerY * centerY);
+        const centerFade = Math.max(0, (distToCenter - maxDistFromCenter * 0.35) / (maxDistFromCenter * 0.4));
+
+        if (dist < INFLUENCE_RADIUS) {
+          const normalizedDist = dist / INFLUENCE_RADIUS;
+          const force = Math.pow(1 - normalizedDist, 2.5) * PUSH_STRENGTH;
+          const angle = Math.atan2(dy, dx);
+          dot.x = dot.baseX + Math.cos(angle) * force;
+          dot.y = dot.baseY + Math.sin(angle) * force;
+          
+          // Combinar transparencia del mouse con degradado del centro
+          const mouseOpacity = 0.03 + normalizedDist * 0.22;
+          const finalOpacity = mouseOpacity * centerFade;
+          
+          if (finalOpacity > 0.01) {
+            ctx.beginPath();
+            ctx.arc(dot.x, dot.y, 1, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${finalOpacity})`;
+            ctx.fill();
+          }
+        } else {
+          dot.x += (dot.baseX - dot.x) * 0.05;
+          dot.y += (dot.baseY - dot.y) * 0.05;
+          
+          // Aplicar degradado del centro
+          const baseOpacity = 0.22 * centerFade;
+          
+          if (baseOpacity > 0.01) {
+            ctx.beginPath();
+            ctx.arc(dot.x, dot.y, 1, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${baseOpacity})`;
+            ctx.fill();
+          }
+        }
+      }
+
+      // Solo dibujar cursor custom si NO está sobre elemento interactivo
+      if (mx > -100 && my > -100 && !isOverInteractiveRef.current) {
+        const color = "rgba(255, 255, 255, 0.85)";
+        const size = 16;
+        const innerGap = 4;
+        const cornerLength = 6;
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.lineCap = "square";
+
+        // Esquinas bracket
+        ctx.beginPath();
+        ctx.moveTo(mx - size, my - size + cornerLength);
+        ctx.lineTo(mx - size, my - size);
+        ctx.lineTo(mx - size + cornerLength, my - size);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(mx + size - cornerLength, my - size);
+        ctx.lineTo(mx + size, my - size);
+        ctx.lineTo(mx + size, my - size + cornerLength);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(mx - size, my + size - cornerLength);
+        ctx.lineTo(mx - size, my + size);
+        ctx.lineTo(mx - size + cornerLength, my + size);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(mx + size - cornerLength, my + size);
+        ctx.lineTo(mx + size, my + size);
+        ctx.lineTo(mx + size, my + size - cornerLength);
+        ctx.stroke();
+
+        // Cruz central
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(mx, my - size + 5);
+        ctx.lineTo(mx, my - innerGap);
+        ctx.moveTo(mx, my + innerGap);
+        ctx.lineTo(mx, my + size - 5);
+        ctx.moveTo(mx - size + 5, my);
+        ctx.lineTo(mx - innerGap, my);
+        ctx.moveTo(mx + innerGap, my);
+        ctx.lineTo(mx + size - 5, my);
+        ctx.stroke();
+
+        // Punto central
+        ctx.beginPath();
+        ctx.arc(mx, my, 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+      }
+
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("mouseleave", handleMouseLeave);
+      window.removeEventListener("resize", handleResize);
+      document.body.style.cursor = 'auto';
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
+        zIndex: 1,
+      }}
+    />
+  );
+}
 
 // ============================================================================
 // HELPERS
@@ -55,6 +289,44 @@ function safeSemester(value: string): number | null {
   if (!v) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+// ============================================================================
+// TYPEWRITER COMPONENT
+// ============================================================================
+
+interface TypewriterProps {
+  text: string;
+  delay?: number;
+  className?: string;
+}
+
+function Typewriter({ text, delay = 50, className = "" }: TypewriterProps) {
+  const [displayText, setDisplayText] = useState("");
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    if (currentIndex < text.length) {
+      const timeout = setTimeout(() => {
+        setDisplayText((prev) => prev + text[currentIndex]);
+        setCurrentIndex((prev) => prev + 1);
+      }, delay);
+      return () => clearTimeout(timeout);
+    }
+  }, [currentIndex, text, delay]);
+
+  return (
+    <span className={className}>
+      {displayText}
+      {currentIndex < text.length && (
+        <motion.span
+          animate={{ opacity: [1, 0] }}
+          transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
+          className="inline-block w-[2px] h-[1em] bg-current ml-[2px] align-middle"
+        />
+      )}
+    </span>
+  );
 }
 
 // ============================================================================
@@ -87,8 +359,8 @@ function OnboardingProgress({
             {isActive ? (
               <motion.div
                 className="onbProgressActive"
-                initial={{ width: 8 }}
-                animate={{ width: 24 }}
+                initial={{ width: 6 }}
+                animate={{ width: 20 }}
                 transition={{ duration: 0.35, ease: "easeOut" }}
               />
             ) : (
@@ -115,6 +387,7 @@ interface OnboardingLayoutProps {
   onSkip?: () => void;
   showBack?: boolean;
   showSkip?: boolean;
+  fromLogin?: boolean;
 }
 
 function OnboardingLayout({
@@ -125,57 +398,66 @@ function OnboardingLayout({
   onSkip,
   showBack = true,
   showSkip = true,
+  fromLogin = false,
 }: OnboardingLayoutProps) {
   return (
-    <div className="onboarding-scope min-h-screen w-full bg-onboarding-bg flex flex-col">
-      <header className="onbHeader">
-        <div className="onbNav">
-          {showBack && currentStep > 0 ? (
-            <motion.button
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              onClick={onBack}
-              className="text-sm font-medium text-onboarding-text-secondary hover:text-onboarding-text-primary transition-colors"
+    <motion.div 
+      className="onboarding-scope min-h-screen w-full flex flex-col"
+      initial={fromLogin ? { opacity: 0 } : { opacity: 1 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.6, delay: fromLogin ? 0.1 : 0 }}
+    >
+      <ParticleGrid />
+      <div className="onboarding-frame">
+        <header className="onbHeader">
+          <div className="onbNav">
+            {showBack && currentStep > 0 ? (
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                onClick={onBack}
+                className="text-sm font-medium text-onboarding-text-secondary hover:text-onboarding-text-primary transition-colors"
+              >
+                Back
+              </motion.button>
+            ) : (
+              <span className="onbNavSpacer" />
+            )}
+
+            {showSkip && (
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                onClick={onSkip}
+                className="text-sm font-medium text-onboarding-text-secondary hover:text-onboarding-text-primary transition-colors"
+              >
+                Next
+              </motion.button>
+            )}
+          </div>
+        </header>
+
+        <main className="flex-1 flex flex-col items-center justify-center px-6 pb-8">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentStep}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.4, ease: "easeOut", delay: fromLogin && currentStep === 0 ? 0.3 : 0 }}
+              className="w-full max-w-2xl"
             >
-              Back
-            </motion.button>
-          ) : (
-            <span className="onbNavSpacer" />
-          )}
+              {children}
+            </motion.div>
+          </AnimatePresence>
+        </main>
 
-          {showSkip && (
-            <motion.button
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              onClick={onSkip}
-              className="text-sm font-medium text-onboarding-text-secondary hover:text-onboarding-text-primary transition-colors"
-            >
-              Skip
-            </motion.button>
-          )}
-        </div>
-      </header>
-
-      <main className="flex-1 flex flex-col items-center justify-center px-6 pb-8">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentStep}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-            className="w-full max-w-2xl"
-          >
-            {children}
-          </motion.div>
-        </AnimatePresence>
-      </main>
-
-      <footer className="onbFooter">
-        <OnboardingProgress currentStep={currentStep} totalSteps={totalSteps} />
-        <div className="onbByline">by Cyclicall</div>
-      </footer>
-    </div>
+        <footer className="onbFooter">
+          <OnboardingProgress currentStep={currentStep} totalSteps={totalSteps} />
+          <div className="onbByline">by Cyclicall</div>
+        </footer>
+      </div>
+    </motion.div>
   );
 }
 
@@ -270,7 +552,7 @@ function OnboardingButton({
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
           />
-          Guardando...
+          Saving...
         </span>
       ) : (
         children
@@ -348,7 +630,7 @@ function OnboardingCard({
 }
 
 // ============================================================================
-// STEP 1: NAME
+// STEP 1: NAME (with live name update)
 // ============================================================================
 
 interface StepNameProps {
@@ -359,12 +641,21 @@ interface StepNameProps {
 }
 
 function StepName({ value, onChange, onNext, email }: StepNameProps) {
-  const firstName =
-    value.trim().split(" ")[0] || email?.split("@")[0] || "traveler";
+  const [showTypewriter, setShowTypewriter] = useState(true);
+  const defaultName = email?.split("@")[0] || "there";
+  
+  // Nombre a mostrar: si escribió algo, usar eso; si no, usar el email o "there"
+  const displayName = value.trim().split(" ")[0] || defaultName;
   const canContinue = value.trim().length >= 2;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && canContinue) onNext();
+  };
+
+  // Cuando empiece a escribir, desactivar typewriter
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (showTypewriter) setShowTypewriter(false);
+    onChange(e.target.value);
   };
 
   return (
@@ -376,16 +667,27 @@ function StepName({ value, onChange, onNext, email }: StepNameProps) {
         className="mb-8"
       >
         <p className="text-xs uppercase tracking-[0.3em] text-onboarding-text-muted mb-4">
-          · CONFIGURACIÓN INICIAL
+          · INITIAL SETUP
         </p>
 
         <h1 className="text-3xl md:text-4xl font-semibold text-onboarding-text-primary mb-3">
-          Bienvenido, {firstName}
+          {showTypewriter && !value.trim() ? (
+            <Typewriter text={`Welcome, ${defaultName}`} delay={60} />
+          ) : (
+            <motion.span
+              key={displayName}
+              initial={{ opacity: 0.5 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15 }}
+            >
+              Welcome, {displayName}
+            </motion.span>
+          )}
         </h1>
 
         <p className="text-base text-onboarding-text-secondary max-w-sm mx-auto leading-relaxed text-pretty">
-          <span className="block">Ingresa con qué nombre prefieres que te llamen</span>
-          <span className="block">para personalizar tu perfil.</span>
+          <span className="block">Enter the name you'd like us to call you</span>
+          <span className="block">to personalize your profile.</span>
         </p>
       </motion.div>
 
@@ -397,15 +699,15 @@ function StepName({ value, onChange, onNext, email }: StepNameProps) {
       >
         <OnboardingInput
           type="text"
-          placeholder="Tu nombre completo"
+          placeholder="Your full name"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={handleChange}
           onKeyDown={handleKeyDown}
           autoFocus
         />
 
         <OnboardingButton onClick={onNext} disabled={!canContinue} className="w-full">
-          Continuar
+          Continue
         </OnboardingButton>
       </motion.div>
     </div>
@@ -446,10 +748,10 @@ function StepCareer({
         className="mb-8"
       >
         <h1 className="text-3xl md:text-4xl font-semibold text-onboarding-text-primary mb-3">
-          ¿Qué estudias?
+          What do you study?
         </h1>
         <p className="text-base text-onboarding-text-secondary max-w-md mx-auto">
-          Esto nos ayuda a personalizar recomendaciones y conectarte con proyectos relevantes.
+          This helps us personalize recommendations and connect you with relevant projects.
         </p>
       </motion.div>
 
@@ -460,9 +762,9 @@ function StepCareer({
         className="max-w-sm mx-auto space-y-4"
       >
         <OnboardingInput
-          label="Carrera / Major"
+          label="Major / Career"
           type="text"
-          placeholder="IBT, IMT, IM, etc."
+          placeholder="e.g. Computer Science, Engineering..."
           value={career}
           onChange={(e) => onCareerChange(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -470,24 +772,24 @@ function StepCareer({
         />
 
         <OnboardingInput
-          label="Semestre (opcional)"
+          label="Semester (optional)"
           type="number"
-          placeholder="Ej. 3"
+          placeholder="e.g. 3"
           min={1}
-          max={8}
+          max={12}
           inputMode="numeric"
           value={semester}
           onChange={(e) => {
             const raw = e.target.value;
             const n = Number(raw);
             if (!Number.isFinite(n)) return;
-            const clamped = Math.max(1, Math.min(8, n));
+            const clamped = Math.max(1, Math.min(12, n));
             onSemesterChange(String(clamped));
           }}
         />
 
         <OnboardingButton onClick={onNext} disabled={!canContinue} className="w-full mt-6">
-          Continuar
+          Continue
         </OnboardingButton>
       </motion.div>
     </div>
@@ -533,10 +835,10 @@ function StepSkills({ value, onChange, onNext }: StepSkillsProps) {
         className="mb-8"
       >
         <h1 className="text-3xl md:text-4xl font-semibold text-onboarding-text-primary mb-3">
-          ¿Cuáles son tus skills?
+          What are your skills?
         </h1>
         <p className="text-base text-onboarding-text-secondary max-w-md mx-auto">
-          Cuéntanos en qué eres bueno. Esto es opcional pero ayuda a formar mejores equipos.
+          Tell us what you're good at. This is optional but helps form better teams.
         </p>
       </motion.div>
 
@@ -571,7 +873,7 @@ function StepSkills({ value, onChange, onNext }: StepSkillsProps) {
         </div>
 
         <OnboardingButton onClick={onNext} className="w-full mt-6">
-          Continuar
+          Continue
         </OnboardingButton>
       </motion.div>
     </div>
@@ -610,10 +912,10 @@ function StepGoals({
         className="mb-8"
       >
         <h1 className="text-3xl md:text-4xl font-semibold text-onboarding-text-primary mb-3">
-          Metas e intereses
+          Goals & Interests
         </h1>
         <p className="text-base text-onboarding-text-secondary max-w-md mx-auto">
-          ¿Qué quieres lograr? ¿Qué temas te apasionan?
+          What do you want to achieve? What topics are you passionate about?
         </p>
       </motion.div>
 
@@ -624,9 +926,9 @@ function StepGoals({
         className="max-w-sm mx-auto space-y-4"
       >
         <OnboardingInput
-          label="Metas"
+          label="Goals"
           type="text"
-          placeholder="Aprender ML, mejorar en control, etc."
+          placeholder="Learn ML, improve control systems, etc."
           value={goals}
           onChange={(e) => onGoalsChange(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -634,16 +936,16 @@ function StepGoals({
         />
 
         <OnboardingInput
-          label="Intereses"
+          label="Interests"
           type="text"
-          placeholder="Robótica, Bioinstrumentación, XR..."
+          placeholder="Robotics, Bioinstrumentation, XR..."
           value={interests}
           onChange={(e) => onInterestsChange(e.target.value)}
           onKeyDown={handleKeyDown}
         />
 
         <OnboardingButton onClick={onNext} className="w-full mt-6">
-          Continuar
+          Continue
         </OnboardingButton>
       </motion.div>
     </div>
@@ -657,32 +959,32 @@ function StepGoals({
 const learningOptions = [
   {
     key: "prefersTheory" as const,
-    label: "Teoría",
-    description: "Explicaciones conceptuales profundas",
+    label: "Theory",
+    description: "Deep conceptual explanations",
     icon: BookOpen,
   },
   {
     key: "prefersVisual" as const,
     label: "Visual",
-    description: "Diagramas, videos e imágenes",
+    description: "Diagrams, videos and images",
     icon: Eye,
   },
   {
     key: "prefersExamples" as const,
-    label: "Ejemplos",
-    description: "Problemas resueltos paso a paso",
+    label: "Examples",
+    description: "Step-by-step solved problems",
     icon: FileText,
   },
   {
     key: "prefersPractice" as const,
-    label: "Práctica",
-    description: "Ejercicios y proyectos hands-on",
+    label: "Practice",
+    description: "Hands-on exercises and projects",
     icon: Wrench,
   },
   {
     key: "prefersStepByStep" as const,
-    label: "Paso a paso",
-    description: "Guías detalladas y estructuradas",
+    label: "Step by step",
+    description: "Detailed and structured guides",
     icon: ListOrdered,
   },
 ];
@@ -707,10 +1009,10 @@ function StepLearning({ style, onChange, onNext }: StepLearningProps) {
         className="mb-8"
       >
         <h1 className="text-3xl md:text-4xl font-semibold text-onboarding-text-primary mb-3">
-          ¿Cómo prefieres aprender?
+          How do you prefer to learn?
         </h1>
         <p className="text-base text-onboarding-text-secondary max-w-md mx-auto">
-          Selecciona todo lo que te describa. Puedes elegir varias opciones.
+          Select everything that describes you. You can choose multiple options.
         </p>
       </motion.div>
 
@@ -767,7 +1069,7 @@ function StepLearning({ style, onChange, onNext }: StepLearningProps) {
         </div>
 
         <OnboardingButton onClick={onNext} className="w-full max-w-sm mx-auto block">
-          Continuar
+          Continue
         </OnboardingButton>
       </motion.div>
     </div>
@@ -814,10 +1116,10 @@ function StepWorkspace({
         className="mb-8"
       >
         <h1 className="text-3xl md:text-4xl font-semibold text-onboarding-text-primary mb-3">
-          Tu laboratorio
+          Your Laboratory
         </h1>
         <p className="text-base text-onboarding-text-secondary max-w-md mx-auto">
-          Únete a un laboratorio existente o crea uno nuevo.
+          Join an existing laboratory or create a new one.
         </p>
       </motion.div>
 
@@ -830,8 +1132,8 @@ function StepWorkspace({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <OnboardingCard
             icon={<Users className="w-5 h-5" />}
-            title="Unirme a uno existente"
-            description="Ingresa el código del laboratorio."
+            title="Join existing"
+            description="Enter the laboratory code."
             selected={mode === "join"}
             onClick={() => onModeChange("join")}
           >
@@ -843,14 +1145,14 @@ function StepWorkspace({
               >
                 <input
                   type="text"
-                  placeholder="Código de laboratorio"
+                  placeholder="Laboratory code"
                   value={joinCode}
                   onChange={(e) => onJoinCodeChange(e.target.value.toUpperCase())}
                   onClick={(e) => e.stopPropagation()}
                   className="w-full px-3 py-2 rounded-lg bg-onboarding-bg border border-onboarding-border text-sm text-onboarding-text-primary placeholder:text-onboarding-text-muted outline-none focus:border-onboarding-border-selected"
                 />
                 <p className="text-[10px] text-onboarding-text-muted mt-2">
-                  Te unirás como <span className="font-semibold">Lab Researcher</span>
+                  You'll join as <span className="font-semibold">Lab Researcher</span>
                 </p>
               </motion.div>
             )}
@@ -858,8 +1160,8 @@ function StepWorkspace({
 
           <OnboardingCard
             icon={<Plus className="w-5 h-5" />}
-            title="Crear laboratorio nuevo"
-            description="Serás Administrador de equipos."
+            title="Create new lab"
+            description="You'll be the team administrator."
             selected={mode === "create"}
             onClick={() => onModeChange("create")}
           >
@@ -871,14 +1173,14 @@ function StepWorkspace({
               >
                 <input
                   type="text"
-                  placeholder="Nombre del laboratorio"
+                  placeholder="Laboratory name"
                   value={newLabName}
                   onChange={(e) => onNewLabNameChange(e.target.value)}
                   onClick={(e) => e.stopPropagation()}
                   className="w-full px-3 py-2 rounded-lg bg-onboarding-bg border border-onboarding-border text-sm text-onboarding-text-primary placeholder:text-onboarding-text-muted outline-none focus:border-onboarding-border-selected"
                 />
                 <p className="text-[10px] text-onboarding-text-muted mt-2">
-                  Serás <span className="font-semibold">Admin</span> de este equipo
+                  You'll be <span className="font-semibold">Admin</span> of this team
                 </p>
               </motion.div>
             )}
@@ -901,7 +1203,7 @@ function StepWorkspace({
           loading={saving}
           className="w-full max-w-sm mx-auto block"
         >
-          Guardar y continuar
+          Save and continue
         </OnboardingButton>
       </motion.div>
     </div>
@@ -916,7 +1218,10 @@ const TOTAL_STEPS = 6;
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
+
+  const fromLogin = location.state?.fromLogin === true;
 
   if (!user) return <Navigate to="/" replace />;
 
@@ -964,15 +1269,12 @@ export default function Onboarding() {
 
     const currentUser = user;
     if (!currentUser) {
-      setError("Tu sesión no está disponible. Inicia sesión de nuevo.");
+      setError("Your session is not available. Please sign in again.");
       setSaving(false);
       return;
     }
 
     try {
-      // =========================================================
-      // 1) PROFILES: upsert + onboarding_completed = true
-      // =========================================================
       const profilePayload = {
         auth_user_id: currentUser.id,
         email: currentUser.email ?? null,
@@ -1000,21 +1302,17 @@ export default function Onboarding() {
 
       if (profileError) {
         console.error("Error upsert profiles:", profileError);
-        setError("No se pudo guardar tu información de perfil.");
+        setError("Could not save your profile information.");
         return;
       }
 
-      // =========================================================
-      // 2) TEAMS: create/join
-      //    - usa join_code (si tu tabla usa 'code', cambia join_code -> code)
-      // =========================================================
       let teamId: string;
       let role: TeamRole = "lab_researcher";
 
       if (workspaceMode === "create") {
         const name = newLabName.trim();
         if (!name) {
-          setError("Escribe un nombre para el laboratorio.");
+          setError("Please enter a name for the laboratory.");
           return;
         }
 
@@ -1024,15 +1322,15 @@ export default function Onboarding() {
           .from("teams")
           .insert({
             name,
-            join_code, // <-- si tu columna se llama "code", cambia a: code: join_code
+            join_code,
             created_by: currentUser.id,
           })
           .select("id")
           .single();
 
         if (teamError || !teamData) {
-          console.error("Error creando team:", teamError);
-          setError("No se pudo crear el laboratorio.");
+          console.error("Error creating team:", teamError);
+          setError("Could not create the laboratory.");
           return;
         }
 
@@ -1041,19 +1339,19 @@ export default function Onboarding() {
       } else {
         const code = joinCode.trim().toUpperCase();
         if (!code) {
-          setError("Escribe el código del laboratorio al que quieres unirte.");
+          setError("Please enter the code of the laboratory you want to join.");
           return;
         }
 
         const { data: teamData, error: teamError } = await supabase
           .from("teams")
           .select("id")
-          .eq("join_code", code) // <-- si tu columna se llama "code", cambia a .eq("code", code)
+          .eq("join_code", code)
           .maybeSingle();
 
         if (teamError || !teamData) {
-          console.error("Error buscando team:", teamError);
-          setError("No encontramos un laboratorio con ese código.");
+          console.error("Error finding team:", teamError);
+          setError("We couldn't find a laboratory with that code.");
           return;
         }
 
@@ -1061,9 +1359,6 @@ export default function Onboarding() {
         role = "lab_researcher";
       }
 
-      // =========================================================
-      // 3) MEMBERSHIP: upsert (permite estar en muchos teams con roles distintos)
-      // =========================================================
       const { error: membershipError } = await supabase
         .from("team_memberships")
         .upsert(
@@ -1077,28 +1372,25 @@ export default function Onboarding() {
 
       if (membershipError) {
         console.error("Error upsert team_memberships:", membershipError);
-        setError("No se pudo vincular tu laboratorio.");
+        setError("Could not link your laboratory.");
         return;
       }
 
-      // =========================================================
-      // 4) ACTIVE TEAM: profiles.active_team_id = teamId (solo 1 activo)
-      // =========================================================
       const { error: activeError } = await supabase
         .from("profiles")
         .update({ active_team_id: teamId })
         .eq("auth_user_id", currentUser.id);
 
       if (activeError) {
-        console.error("Error guardando active_team_id:", activeError);
-        setError("No se pudo guardar tu laboratorio activo.");
+        console.error("Error saving active_team_id:", activeError);
+        setError("Could not save your active laboratory.");
         return;
       }
 
       navigate("/dashboard");
     } catch (e) {
       console.error(e);
-      setError("Hubo un error al guardar. Intenta de nuevo.");
+      setError("There was an error saving. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -1172,6 +1464,7 @@ export default function Onboarding() {
       onSkip={handleSkip}
       showBack={currentStep > 0}
       showSkip={currentStep < TOTAL_STEPS - 1}
+      fromLogin={fromLogin}
     >
       {renderStep()}
     </OnboardingLayout>

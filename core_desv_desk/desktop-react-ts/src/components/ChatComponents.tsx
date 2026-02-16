@@ -1,0 +1,868 @@
+// src/components/ChatComponents.tsx
+// Shared chat components extracted from Dashboard.tsx for reuse in Analysis page.
+
+import { useState, useEffect, useRef } from "react";
+import {
+  ArrowUp,
+  Paperclip,
+  X,
+  Square,
+  ChevronRight,
+  Check,
+  Loader2,
+  Copy,
+  Search,
+  BrainCircuit,
+  Database,
+  FileText,
+  Settings,
+} from "lucide-react";
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+export interface PastedContent {
+  id: string;
+  content: string;
+}
+
+export interface ImageAttachment {
+  name: string;
+  mediaType: string;
+  dataUrl: string;
+}
+
+export interface Message {
+  id: string;
+  text: string;
+  sender: "user" | "ai";
+  createdAt: string;
+  pastedContents?: PastedContent[];
+  images?: ImageAttachment[];
+}
+
+export interface Session {
+  id: string;
+  title: string;
+  createdAt: string;
+  messages: Message[];
+}
+
+interface QuestionOption {
+  label: string;
+  value: string;
+}
+
+export interface ClarificationQuestion {
+  id: string;
+  question: string;
+  options?: QuestionOption[];
+  type: "choice" | "text";
+}
+
+export interface TimelineEvent {
+  id: string;
+  node: string;
+  message: string;
+  timestamp: string;
+  isActive?: boolean;
+}
+
+export interface EventRun {
+  id: string;
+  userMessageId: string;
+  events: TimelineEvent[];
+  status: "streaming" | "done";
+  isExpanded: boolean;
+}
+
+export interface FollowUpSuggestion {
+  id: string;
+  text: string;
+}
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+export function highlightCode(code: string, language: string): string {
+  let html = code
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  const jsKeywords = /\b(const|let|var|function|return|if|else|for|while|class|export|import|from|default|async|await|new|this|try|catch|throw|typeof|instanceof)\b/g;
+  const typeKeywords = /\b(string|number|boolean|void|any|null|undefined|true|false)\b/g;
+
+  html = html.replace(/(\/\/.*$)/gm, '<span class="code-comment">$1</span>');
+  html = html.replace(/(\/\*[\s\S]*?\*\/)/g, '<span class="code-comment">$1</span>');
+  html = html.replace(/("(?:[^"\\]|\\.)*")/g, '<span class="code-string">$1</span>');
+  html = html.replace(/('(?:[^'\\]|\\.)*')/g, '<span class="code-string">$1</span>');
+  html = html.replace(/(`(?:[^`\\]|\\.)*`)/g, '<span class="code-string">$1</span>');
+  html = html.replace(/\b(\d+\.?\d*)\b/g, '<span class="code-number">$1</span>');
+  html = html.replace(jsKeywords, '<span class="code-keyword">$1</span>');
+
+  if (language === 'typescript' || language === 'ts') {
+    html = html.replace(typeKeywords, '<span class="code-type">$1</span>');
+    html = html.replace(/:\s*([A-Z]\w*)/g, ': <span class="code-type">$1</span>');
+  }
+
+  html = html.replace(/\b([a-zA-Z_]\w*)\s*\(/g, '<span class="code-function">$1</span>(');
+
+  return html;
+}
+
+// ============================================================================
+// INLINE EVENT RUN HOOKS
+// ============================================================================
+
+const SETUP_COUNT = 3;
+
+export function stepIcon(index: number, node: string, size: number) {
+  if (index < SETUP_COUNT) return <Database size={size} />;
+  const n = node.toLowerCase();
+  if (n.includes("search") || n.includes("research") || n.includes("query")) return <Search size={size} />;
+  if (n.includes("analy") || n.includes("think") || n.includes("reason")) return <BrainCircuit size={size} />;
+  if (n.includes("data") || n.includes("fetch") || n.includes("retriev")) return <Database size={size} />;
+  if (n.includes("report") || n.includes("write") || n.includes("summar") || n.includes("doc")) return <FileText size={size} />;
+  if (n.includes("config") || n.includes("tool") || n.includes("setup")) return <Settings size={size} />;
+  return <BrainCircuit size={size} />;
+}
+
+const LOADING_PHRASES = [
+  "Preparing for launch...",
+  "Working on it!",
+  "Fixing myself...",
+  "Pip pip!",
+  "Beep boop...",
+  "Almost there...",
+  "Warming up circuits...",
+  "Crunching data...",
+  "One moment...",
+  "Connecting the dots...",
+  "Consulting the oracle...",
+  "Thinking hard...",
+  "Feeding the hamsters...",
+  "Reticulating splines...",
+  "Calibrating sensors...",
+  "Loading awesomeness...",
+  "Brewing some magic...",
+  "Hold tight...",
+  "On my way!",
+  "Assembling the answer...",
+];
+
+export function useRotatingPhrase(active: boolean) {
+  const [index, setIndex] = useState(() => Math.floor(Math.random() * LOADING_PHRASES.length));
+
+  useEffect(() => {
+    if (!active) return;
+    const interval = setInterval(() => {
+      setIndex(prev => {
+        let next: number;
+        do { next = Math.floor(Math.random() * LOADING_PHRASES.length); } while (next === prev);
+        return next;
+      });
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [active]);
+
+  return LOADING_PHRASES[index];
+}
+
+export function useTypewriterLog(text: string, speed = 35) {
+  const [displayed, setDisplayed] = useState("");
+  const targetRef = useRef(text);
+
+  useEffect(() => {
+    targetRef.current = text;
+    setDisplayed("");
+    let i = 0;
+    const timer = setInterval(() => {
+      i++;
+      if (i >= text.length) {
+        setDisplayed(text);
+        clearInterval(timer);
+      } else {
+        setDisplayed(text.slice(0, i));
+      }
+    }, speed);
+    return () => clearInterval(timer);
+  }, [text, speed]);
+
+  return { displayed, isTyping: displayed.length < text.length };
+}
+
+// ============================================================================
+// INLINE EVENT RUN
+// ============================================================================
+
+interface InlineEventRunProps {
+  run: EventRun;
+  onToggleExpand: (runId: string) => void;
+}
+
+export function InlineEventRun({ run, onToggleExpand }: InlineEventRunProps) {
+  const isStreaming = run.status === "streaming";
+  const eventCount = run.events.length;
+  const latest = run.events[eventCount - 1];
+  const isWaiting = isStreaming && eventCount === 0;
+  const phrase = useRotatingPhrase(isWaiting);
+
+  const fullText = !isStreaming ? "Done" : (latest ? latest.message : phrase);
+  const { displayed, isTyping } = useTypewriterLog(fullText);
+
+  if (eventCount === 0 && !isStreaming) return null;
+
+  return (
+    <div className="dash_logWrap">
+      <div className="dash_logLine">
+        <span className="dash_logIcon">
+          {isStreaming
+            ? <span className="dash_logPulse" />
+            : <Check size={14} />
+          }
+        </span>
+
+        <span className="dash_logText">
+          {displayed}
+          {isStreaming && <span className={`dash_logCursor ${isTyping ? "" : "dash_logCursor--idle"}`}>|</span>}
+        </span>
+
+        {eventCount > 0 && (
+          <button
+            type="button"
+            className="dash_logExpand"
+            onClick={() => onToggleExpand(run.id)}
+            aria-expanded={run.isExpanded}
+            title={run.isExpanded ? "Collapse" : `${eventCount} steps`}
+          >
+            <ChevronRight
+              size={14}
+              className={`dash_logExpandIcon ${run.isExpanded ? "dash_logExpandIcon--open" : ""}`}
+            />
+          </button>
+        )}
+      </div>
+
+      {run.isExpanded && (
+        <div className="dash_logHistory">
+          {run.events.map((evt, i) => {
+            const isLast = i === eventCount - 1;
+            const isActive = isStreaming && isLast;
+            return (
+              <div key={evt.id} className="dash_logHistoryItem">
+                <span className={`dash_logHistoryIcon ${isActive ? "dash_logIcon--spin" : ""}`}>
+                  {isActive ? <Loader2 size={12} /> : stepIcon(i, evt.node, 12)}
+                </span>
+                <span className="dash_logHistoryText">{evt.message}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// FOLLOW-UP SUGGESTIONS
+// ============================================================================
+
+interface SuggestionsProps {
+  suggestions: FollowUpSuggestion[];
+  onSelect: (suggestion: string) => void;
+}
+
+export function FollowUpSuggestions({ suggestions, onSelect }: SuggestionsProps) {
+  if (suggestions.length === 0) return null;
+
+  return (
+    <div className="dash_suggestions">
+      <div className="dash_suggestionsTitle">
+        Suggested follow-up questions
+      </div>
+      <div className="dash_suggestionsList">
+        {suggestions.map((suggestion) => (
+          <button
+            key={suggestion.id}
+            type="button"
+            className="dash_suggestionBtn"
+            onClick={() => onSelect(suggestion.text)}
+          >
+            <span>{suggestion.text}</span>
+            <ChevronRight size={16} className="dash_suggestionArrow" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// CHAT INPUT
+// ============================================================================
+
+interface ChatInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: (pastedContents?: string[]) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  isLoading?: boolean;
+  onStop?: () => void;
+  pendingFiles?: File[];
+  onAttachClick?: () => void;
+  onRemoveFile?: (index: number) => void;
+}
+
+export function ChatInput({
+  value,
+  onChange,
+  onSubmit,
+  placeholder = "Try something...",
+  disabled = false,
+  isLoading = false,
+  onStop,
+  pendingFiles = [],
+  onAttachClick,
+  onRemoveFile
+}: ChatInputProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [pastedContents, setPastedContents] = useState<string[]>([]);
+  const [showPastedModal, setShowPastedModal] = useState<number | null>(null);
+  const PASTE_THRESHOLD = 100;
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey && (value.trim() || pastedContents.length > 0 || pendingFiles.length > 0)) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const pastedText = e.clipboardData.getData('text');
+    if (pastedText.length > PASTE_THRESHOLD) {
+      e.preventDefault();
+      setPastedContents(prev => [...prev, pastedText]);
+    }
+  };
+
+  const removePasted = (index: number) => {
+    setPastedContents(prev => prev.filter((_, i) => i !== index));
+  };
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    const newHeight = Math.min(el.scrollHeight, 120);
+    el.style.height = `${newHeight}px`;
+  }, [value]);
+
+  const handleSubmit = () => {
+    if (!value.trim() && pastedContents.length === 0 && pendingFiles.length === 0) return;
+    onSubmit(pastedContents.length > 0 ? pastedContents : undefined);
+    setPastedContents([]);
+  };
+
+  return (
+    <div className="dash_chatInputWrapper">
+      {pendingFiles.length > 0 && (
+        <div className="dash_pendingFiles">
+          {pendingFiles.map((f, idx) => (
+            <div key={`${f.name}-${idx}`} className="dash_fileChip">
+              <span className="dash_fileChipName">{f.name}</span>
+              <button
+                type="button"
+                onClick={() => onRemoveFile?.(idx)}
+                className="dash_fileChipRemove"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {pastedContents.length > 0 && (
+        <div className="dash_pastedChipRow">
+          {pastedContents.map((_, idx) => (
+            <div key={idx} className="dash_pastedChipGroup">
+              <button
+                type="button"
+                className="dash_pastedChip"
+                onClick={() => setShowPastedModal(idx)}
+              >
+                <span className="dash_pastedChipLabel">PASTED</span>
+                <span className="dash_pastedChipCount">{idx + 1}</span>
+              </button>
+              <button
+                type="button"
+                className="dash_pastedChipRemove"
+                onClick={() => removePasted(idx)}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showPastedModal !== null && pastedContents[showPastedModal] && (
+        <div className="dash_pastedModalOverlay" onClick={() => setShowPastedModal(null)}>
+          <div className="dash_pastedModal" onClick={(e) => e.stopPropagation()}>
+            <div className="dash_pastedModalHeader">
+              <span>Pasted content {showPastedModal + 1}</span>
+              <button
+                type="button"
+                className="dash_pastedModalClose"
+                onClick={() => setShowPastedModal(null)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="dash_pastedModalContent">
+              {pastedContents[showPastedModal]}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="dash_chatInputBox">
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
+          placeholder={placeholder}
+          disabled={disabled}
+          rows={1}
+          className="dash_chatTextarea"
+        />
+
+        {isLoading ? (
+          <button
+            type="button"
+            className="dash_chatSendBtn dash_chatSendBtn--stop"
+            onClick={onStop}
+            aria-label="Stop generation"
+          >
+            <Square size={12} fill="currentColor" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="dash_chatSendBtn"
+            onClick={handleSubmit}
+            disabled={disabled || (!value.trim() && pendingFiles.length === 0 && pastedContents.length === 0)}
+            aria-label="Send message"
+          >
+            <ArrowUp size={18} />
+          </button>
+        )}
+      </div>
+
+      <div className="dash_chatFooter">
+        <button
+          type="button"
+          onClick={onAttachClick}
+          disabled={disabled}
+          className="dash_chatFooterBtn"
+        >
+          <Paperclip size={14} />
+          <span>Attach files</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// MESSAGE BUBBLE with Markdown support
+// ============================================================================
+
+interface MessageBubbleProps {
+  message: Message;
+  hideCodeBlocks?: boolean;
+  isLatestAi?: boolean;
+}
+
+export function MessageBubble({ message, hideCodeBlocks = false, isLatestAi = false }: MessageBubbleProps) {
+  const isUser = message.sender === "user";
+  const [showPastedModal, setShowPastedModal] = useState<number | null>(null);
+
+  // Typewriter effect for latest AI message
+  const shouldType = !isUser && isLatestAi;
+  const [typedLength, setTypedLength] = useState(() => shouldType ? 0 : message.text.length);
+  const hasTypedRef = useRef(!shouldType);
+
+  useEffect(() => {
+    if (isUser || !isLatestAi || hasTypedRef.current) return;
+
+    const total = message.text.length;
+    if (total === 0) { hasTypedRef.current = true; return; }
+
+    const tickMs = 14;
+    const totalTicks = Math.max(20, Math.min(60, Math.ceil(total / 8)));
+    const charsPerTick = Math.ceil(total / totalTicks);
+
+    let current = 0;
+    const timer = setInterval(() => {
+      current += charsPerTick;
+      if (current >= total) {
+        setTypedLength(total);
+        hasTypedRef.current = true;
+        clearInterval(timer);
+      } else {
+        setTypedLength(current);
+      }
+    }, tickMs);
+
+    return () => clearInterval(timer);
+  }, [isLatestAi, isUser, message.text]);
+
+  const isTyping = !isUser && typedLength < message.text.length;
+
+  let displayText = message.text;
+  if (hideCodeBlocks) {
+    displayText = displayText.replace(/```[\s\S]*?```/g, '').trim();
+  }
+  if (isTyping) {
+    displayText = displayText.slice(0, typedLength);
+  }
+
+  const hasPastedContents = message.pastedContents && message.pastedContents.length > 0;
+
+  // Simple Markdown renderer
+  const renderMarkdown = (text: string) => {
+    if (!text) return null;
+
+    const lines = text.replace(/\r\n/g, "\n").split("\n");
+    const elements: JSX.Element[] = [];
+
+    let currentParagraph: string[] = [];
+    let inCodeBlock = false;
+    let codeContent: string[] = [];
+    let codeLanguage = "";
+
+    let listType: "ul" | "ol" | null = null;
+    let listItems: JSX.Element[] = [];
+    let blockquoteLines: string[] = [];
+
+    const processInlineMarkdown = (input: string) => {
+      const parts: (string | JSX.Element)[] = [];
+      let remaining = input;
+      let k = 0;
+
+      while (remaining.length > 0) {
+        const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
+        const italicMatch = remaining.match(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/);
+        const codeMatch = remaining.match(/`([^`]+)`/);
+        const linkMatch = remaining.match(/\[([^\]]+)\]\(([^)]+)\)/);
+        const highlightMatch = remaining.match(/==([+\-~?]?)(.+?)==/);
+
+        const matches = [
+          boldMatch ? { type: "bold", match: boldMatch, index: boldMatch.index! } : null,
+          italicMatch ? { type: "italic", match: italicMatch, index: italicMatch.index! } : null,
+          codeMatch ? { type: "code", match: codeMatch, index: codeMatch.index! } : null,
+          linkMatch ? { type: "link", match: linkMatch, index: linkMatch.index! } : null,
+          highlightMatch ? { type: "highlight", match: highlightMatch, index: highlightMatch.index! } : null,
+        ].filter(Boolean).sort((a, b) => a!.index - b!.index);
+
+        if (matches.length === 0) { parts.push(remaining); break; }
+
+        const first = matches[0]!;
+        if (first.index > 0) parts.push(remaining.slice(0, first.index));
+
+        if (first.type === "bold") {
+          parts.push(<strong key={k++}>{first.match[1]}</strong>);
+        } else if (first.type === "italic") {
+          parts.push(<em key={k++}>{first.match[1]}</em>);
+        } else if (first.type === "code") {
+          parts.push(<code key={k++} className="dash_mdInlineCode">{first.match[1]}</code>);
+        } else if (first.type === "link") {
+          parts.push(
+            <a key={k++} className="dash_mdLink" href={first.match[2]} target="_blank" rel="noopener noreferrer">
+              {first.match[1]}
+            </a>
+          );
+        } else if (first.type === "highlight") {
+          parts.push(
+            <mark key={k++} className="dash_highlight">{first.match[2]}</mark>
+          );
+        }
+        remaining = remaining.slice(first.index + first.match[0].length);
+      }
+      return parts;
+    };
+
+    const flushParagraph = () => {
+      if (!currentParagraph.length) return;
+      elements.push(
+        <p key={`p-${elements.length}`} className="dash_mdParagraph">
+          {processInlineMarkdown(currentParagraph.join("\n"))}
+        </p>
+      );
+      currentParagraph = [];
+    };
+
+    const flushList = () => {
+      if (!listType || listItems.length === 0) return;
+      elements.push(
+        listType === "ul"
+          ? <ul key={`ul-${elements.length}`} className="dash_mdUL">{listItems}</ul>
+          : <ol key={`ol-${elements.length}`} className="dash_mdOL">{listItems}</ol>
+      );
+      listType = null;
+      listItems = [];
+    };
+
+    const flushBlockquote = () => {
+      if (blockquoteLines.length === 0) return;
+      elements.push(
+        <blockquote key={`bq-${elements.length}`} className="dash_mdBlockquote">
+          {blockquoteLines.map((l, i) => (
+            <p key={i} className="dash_mdBlockquoteLine">{processInlineMarkdown(l)}</p>
+          ))}
+        </blockquote>
+      );
+      blockquoteLines = [];
+    };
+
+    const handleCodeCopy = (code: string) => {
+      navigator.clipboard.writeText(code);
+    };
+
+    for (const line of lines) {
+      if (line.startsWith("```")) {
+        flushParagraph(); flushList(); flushBlockquote();
+        if (!inCodeBlock) {
+          inCodeBlock = true;
+          codeLanguage = line.slice(3).trim();
+          codeContent = [];
+        } else {
+          if (!hideCodeBlocks) {
+            const raw = codeContent.join("\n");
+            const lang = codeLanguage || "code";
+            const highlighted = highlightCode(raw, lang);
+            elements.push(
+              <div key={`code-${elements.length}`} className="dash_mdCodeBlock">
+                <div className="dash_mdCodeHeader">
+                  <span className="dash_mdCodeLang">{lang}</span>
+                  <button type="button" className="dash_mdCodeCopy" onClick={() => handleCodeCopy(raw)}>
+                    <Copy size={12} />
+                    <span>Copy</span>
+                  </button>
+                </div>
+                <pre className="dash_mdCodeContent">
+                  <code dangerouslySetInnerHTML={{ __html: highlighted }} />
+                </pre>
+              </div>
+            );
+          }
+          inCodeBlock = false;
+          codeLanguage = "";
+          codeContent = [];
+        }
+        continue;
+      }
+
+      if (inCodeBlock) { codeContent.push(line); continue; }
+
+      if (/^\s*---+\s*$/.test(line)) {
+        flushParagraph(); flushList(); flushBlockquote();
+        elements.push(<hr key={`hr-${elements.length}`} className="dash_mdDivider" />);
+        continue;
+      }
+
+      const bqMatch = line.match(/^>\s?(.*)$/);
+      if (bqMatch) {
+        flushParagraph(); flushList();
+        blockquoteLines.push(bqMatch[1]);
+        continue;
+      } else if (blockquoteLines.length > 0) {
+        flushBlockquote();
+      }
+
+      if (line.startsWith("### ")) {
+        flushParagraph(); flushList();
+        elements.push(<h4 key={`h3-${elements.length}`} className="dash_mdH3">{processInlineMarkdown(line.slice(4))}</h4>);
+        continue;
+      }
+      if (line.startsWith("## ")) {
+        flushParagraph(); flushList();
+        elements.push(<h3 key={`h2-${elements.length}`} className="dash_mdH2">{processInlineMarkdown(line.slice(3))}</h3>);
+        continue;
+      }
+      if (line.startsWith("# ")) {
+        flushParagraph(); flushList();
+        elements.push(<h2 key={`h1-${elements.length}`} className="dash_mdH1">{processInlineMarkdown(line.slice(2))}</h2>);
+        continue;
+      }
+
+      const ulMatch = line.match(/^\s*[-*]\s+(.+)$/);
+      if (ulMatch) {
+        flushParagraph();
+        if (listType !== "ul") { flushList(); listType = "ul"; }
+        listItems.push(<li key={`li-${elements.length}-${listItems.length}`} className="dash_mdLI">{processInlineMarkdown(ulMatch[1])}</li>);
+        continue;
+      }
+
+      const olMatch = line.match(/^\s*\d+\.\s+(.+)$/);
+      if (olMatch) {
+        flushParagraph();
+        if (listType !== "ol") { flushList(); listType = "ol"; }
+        listItems.push(<li key={`li-${elements.length}-${listItems.length}`} className="dash_mdLI">{processInlineMarkdown(olMatch[1])}</li>);
+        continue;
+      }
+
+      if (line.trim() === "") {
+        flushParagraph(); flushList(); flushBlockquote();
+        continue;
+      }
+
+      flushList(); flushBlockquote();
+      currentParagraph.push(line);
+    }
+
+    flushParagraph();
+    flushList();
+    flushBlockquote();
+
+    return elements;
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(message.text);
+  };
+
+  const handleLike = () => {
+    console.log('Liked message:', message.id);
+  };
+
+  const handleDislike = () => {
+    console.log('Disliked message:', message.id);
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  return (
+    <div className={`dash_messageWrapper ${isUser ? "dash_messageWrapper--user" : "dash_messageWrapper--ai"}`}>
+      <div className={`dash_messageBubble ${isUser ? "dash_messageBubble--user" : "dash_messageBubble--ai"}`}>
+        {isUser && hasPastedContents && (
+          <div className="dash_messagePastedChips">
+            {message.pastedContents!.map((pasted, idx) => (
+              <button
+                key={pasted.id}
+                type="button"
+                className="dash_messagePastedChip"
+                onClick={() => setShowPastedModal(idx)}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <span>PASTED {idx + 1}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {isUser && message.images && message.images.length > 0 && (
+          <div className="dash_messageImages">
+            {message.images.map((img, idx) => (
+              <div key={idx} className="dash_messageImageThumb">
+                <img
+                  src={img.dataUrl}
+                  alt={img.name}
+                  className="dash_messageImage"
+                />
+                <span className="dash_messageImageName">{img.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="dash_messageText">
+          {isUser ? displayText : renderMarkdown(displayText)}
+          {isTyping && <span className="dash_typingCursor" />}
+        </div>
+
+        {!isUser && (
+          <div className="dash_messageFooter">
+            <span className="dash_messageTime">{formatTime(message.createdAt)}</span>
+            <div className="dash_messageActions">
+              <button
+                type="button"
+                className="dash_messageActionBtn"
+                onClick={handleCopy}
+                title="Copy to clipboard"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="dash_messageActionBtn"
+                onClick={handleLike}
+                title="Good response"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="dash_messageActionBtn"
+                onClick={handleDislike}
+                title="Bad response"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {isUser && (
+        <div className="dash_messageTimeExternal">
+          {formatTime(message.createdAt)}
+        </div>
+      )}
+
+      {showPastedModal !== null && message.pastedContents && (
+        <div className="dash_pastedModalOverlay" onClick={() => setShowPastedModal(null)}>
+          <div className="dash_pastedModal" onClick={(e) => e.stopPropagation()}>
+            <div className="dash_pastedModalHeader">
+              <span>PASTED {showPastedModal + 1}</span>
+              <button
+                type="button"
+                className="dash_pastedModalClose"
+                onClick={() => setShowPastedModal(null)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="dash_pastedModalContent">
+              {message.pastedContents[showPastedModal]?.content || ""}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

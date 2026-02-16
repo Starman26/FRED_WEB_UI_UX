@@ -1,4 +1,39 @@
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+@font-face {
+  font-family: 'Neue Machina';
+  src: url('https://cdn.jsdelivr.net/gh/nicokosi/neue-machina-font@master/fonts/NeueMachina-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Neue Machina';
+  src: url('https://cdn.jsdelivr.net/gh/nicokosi/neue-machina-font@master/fonts/NeueMachina-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Neue Machina';
+  src: url('https://cdn.jsdelivr.net/gh/nicokosi/neue-machina-font@master/fonts/NeueMachina-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Neue Machina';
+  src: url('https://cdn.jsdelivr.net/gh/nicokosi/neue-machina-font@master/fonts/NeueMachina-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Neue Machina';
+  src: url('https://cdn.jsdelivr.net/gh/nicokosi/neue-machina-font@master/fonts/NeueMachina-Ultrabold.woff2') format('woff2');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   --login-bg: 220 9% 7%;
@@ -16,28 +51,24 @@
   --login-primary-text: rgba(0, 0, 0, 0.92);
   --login-danger: rgba(255, 120, 120, 0.95);
 
-  --font-serif: "Playfair Display", Georgia, serif;
-  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: 'Neue Machina', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
 
   --transition-base: 180ms ease;
 }
 
 /* ===========================
-   Base Container
+   Base Container - 50/50 Layout
    =========================== */
 .login-container {
   display: flex;
   min-height: 100vh;
   width: 100%;
-  background: radial-gradient(
-      900px 520px at 50% 40%,
-      rgba(255, 255, 255, 0.06),
-      transparent 60%
-    ),
-    hsl(var(--login-bg));
+  background: #ffffff;
   font-family: var(--font-sans);
   overflow: hidden;
   color: var(--login-text);
+  padding: 12px;
 }
 
 .login-container,
@@ -45,129 +76,60 @@
   box-sizing: border-box;
 }
 
-.login-container.login-compact {
-  align-items: center;
-  justify-content: center;
-  padding: 52px 24px;
-  gap: 18px;
+/* Marco redondeado */
+.login-frame {
+  display: flex;
+  flex: 1;
+  border-radius: 20px;
+  overflow: hidden;
+  background: hsl(var(--login-bg));
 }
 
 /* ===========================
-   Two-card layout (swap sizes)
-   - default: form bigger
-   - hover-hero: hero bigger
-   =========================== */
-
-.login-left,
-.login-right {
-  transition: flex-basis var(--transition-base),
-    transform var(--transition-base),
-    opacity var(--transition-base);
-  will-change: flex-basis, transform;
-}
-
-/* Default sizes (when wide enough to show 2 cards) */
-@media (min-width: 1060px) {
-  .login-left {
-    flex: 0 0 520px; /* big card */
-  }
-
-  .login-right {
-    display: flex;
-    flex: 0 0 420px; /* small card */
-    padding: 0;
-  }
-
-  /* little lift for whichever is "active" */
-  .login-container.hover-form .login-left {
-    transform: translateY(-2px);
-  }
-
-  .login-container.hover-form .login-right {
-    transform: translateY(0px);
-    opacity: 0.92;
-  }
-
-  .login-container.hover-hero .login-right {
-    flex-basis: 560px; /* hero becomes big */
-    transform: translateY(-2px);
-    opacity: 1;
-  }
-
-  .login-container.hover-hero .login-left {
-    flex-basis: 420px; /* form becomes small */
-    transform: translateY(0px);
-    opacity: 0.92;
-  }
-
-  /* tighten the form card when it becomes small */
-  .login-container.hover-hero .login-form-wrapper {
-    padding: 22px 22px 18px;
-  }
-
-  .login-container.hover-hero .login-title {
-    font-size: 26px;
-  }
-}
-
-/* When not wide, only show form (simple) */
-.login-right {
-  display: none;
-  position: relative;
-}
-
-@media (min-width: 1060px) {
-  .login-right {
-    display: flex;
-  }
-}
-
-/* ===========================
-   Left card (Form)
+   Left Panel - Form (50%)
    =========================== */
 .login-left {
-  width: 100%;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 40px;
+  background: radial-gradient(
+      600px 400px at 70% 50%,
+      rgba(255, 255, 255, 0.04),
+      transparent 60%
+    );
 }
 
 .login-form-wrapper {
   width: 100%;
-  max-width: 520px;
-  margin: 0 auto;
-  padding: 28px 28px 22px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--login-border);
-  box-shadow: none;
-  transition: padding var(--transition-base);
+  max-width: 380px;
 }
 
 .login-stack {
-  margin-top: 6px;
+  margin-top: 4px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .login-branding {
   display: flex;
   align-items: baseline;
-  justify-content: center;
   gap: 8px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   user-select: none;
   opacity: 0.9;
   animation: fadeIn 0.32s ease forwards;
 }
 
 .brand-name {
-  font-size: 11px;
+  font-family: var(--font-display);
+  font-size: 10px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--login-text-muted);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .brand-dot {
@@ -176,39 +138,36 @@
 }
 
 .brand-sub {
-  font-size: 11px;
+  font-size: 10px;
   color: rgba(255, 255, 255, 0.38);
 }
 
 .login-header {
-  text-align: center;
   animation: fadeIn 0.32s ease 0.03s forwards;
   opacity: 0;
 }
 
 .login-title {
-  font-family: var(--font-sans);
-  font-size: 30px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 400;
   margin: 0;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   color: var(--login-text);
-  line-height: 1.12;
-  white-space: pre-line;
-  transition: font-size var(--transition-base);
+  line-height: 1.15;
 }
 
 /* Form */
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .form-field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   animation: fadeIn 0.32s ease 0.08s forwards;
   opacity: 0;
 }
@@ -218,7 +177,7 @@
 }
 
 .form-label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--login-text-soft);
 }
@@ -237,7 +196,7 @@
 }
 
 .forgot-password {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--login-text-muted);
   background: none;
   border: none;
@@ -253,14 +212,14 @@
 .form-input {
   width: 100%;
   height: 44px;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid var(--login-border);
   background: var(--login-input-bg);
-  padding: 0 12px;
+  padding: 0 14px;
 
   font-size: 14px;
   font-family: var(--font-sans);
-  color: var(--login-text);
+  color: rgba(255, 255, 255, 0.6);
 
   transition: border-color var(--transition-base),
     background-color var(--transition-base);
@@ -280,8 +239,8 @@
 .form-input:focus,
 .form-input:focus-visible {
   outline: none;
-  border-color: rgba(255, 255, 255, 0.22);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: none;
 }
 
 .form-error {
@@ -296,53 +255,54 @@
 }
 
 .input-with-toggle .form-input {
-  padding-right: 72px;
+  padding-right: 48px;
 }
 
 .password-toggle {
   position: absolute;
-  right: 10px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
 
-  height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
 
-  border: 1px solid var(--login-border);
-  background: rgba(255, 255, 255, 0.02);
-
-  color: rgba(255, 255, 255, 0.65);
-  font-size: 12px;
-  font-weight: 600;
-
+  color: rgba(255, 255, 255, 0.45);
   cursor: pointer;
-  transition: background-color var(--transition-base),
-    border-color var(--transition-base), color var(--transition-base);
+  transition: color var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .password-toggle:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: var(--login-border-strong);
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.password-toggle svg {
+  width: 20px;
+  height: 20px;
 }
 
 /* Remember */
 .remember-me {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 2px;
+  gap: 8px;
+  margin-top: 0;
 }
 
 .remember-checkbox {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   accent-color: rgba(255, 255, 255, 0.85);
 }
 
 .remember-label {
-  font-size: 13px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.62);
   user-select: none;
 }
@@ -351,15 +311,16 @@
 .login-button {
   height: 46px;
   width: 100%;
-  border-radius: 14px;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.10);
 
   background: var(--login-primary);
   color: var(--login-primary-text);
 
-  font-size: 14px;
-  font-weight: 700;
-  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
 
   cursor: pointer;
   transition: opacity var(--transition-base),
@@ -388,8 +349,8 @@
 .divider {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin: 10px 0 2px;
+  gap: 10px;
+  margin: 4px 0;
   animation: fadeIn 0.32s ease 0.22s forwards;
   opacity: 0;
 }
@@ -401,16 +362,16 @@
 }
 
 .divider-text {
-  font-size: 12px;
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.38);
   text-transform: lowercase;
 }
 
-/* Social (1 column) */
+/* Social buttons */
 .social-buttons {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   animation: fadeIn 0.32s ease 0.26s forwards;
   opacity: 0;
 }
@@ -419,10 +380,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
 
   height: 44px;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid var(--login-border);
   background: rgba(255, 255, 255, 0.03);
 
@@ -450,15 +411,14 @@
 }
 
 .social-icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 /* Footer */
 .login-footer {
-  margin-top: 6px;
-  text-align: center;
-  font-size: 13px;
+  margin-top: 8px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.55);
   animation: fadeIn 0.32s ease 0.30s forwards;
   opacity: 0;
@@ -480,21 +440,25 @@
 }
 
 /* ===========================
-   Right Panel - Hero
+   Right Panel - Video (50%)
    =========================== */
 .login-right {
-  padding: 0;
+  flex: 1;
+  display: none;
+  position: relative;
+}
+
+@media (min-width: 900px) {
+  .login-right {
+    display: flex;
+  }
 }
 
 .login-hero {
   position: relative;
   width: 100%;
   height: 100%;
-  min-height: 520px;
-  border-radius: 18px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .hero-video {
@@ -504,78 +468,78 @@
   height: 100%;
   object-fit: cover;
   object-position: center;
-  transform: scale(1.01);
   pointer-events: none;
-  filter: saturate(0.85) contrast(0.95) brightness(0.65);
+  filter: saturate(0.9) contrast(0.95) brightness(0.7);
 }
 
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background: radial-gradient(
-      800px 380px at 50% 35%,
-      rgba(255, 255, 255, 0.06),
-      transparent 65%
-    ),
-    linear-gradient(to top, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.18));
+  background: 
+    linear-gradient(to right, hsl(var(--login-bg)) 0%, transparent 15%),
+    linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 40%);
   pointer-events: none;
 }
 
 .hero-tagline {
   position: absolute;
   z-index: 2;
-  bottom: 22px;
-  left: 22px;
-  right: 22px;
-  opacity: 0.88;
+  bottom: 40px;
+  left: 40px;
+  right: 40px;
 }
 
 .hero-title {
-  font-family: var(--font-sans);
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.12;
-  color: rgba(255, 255, 255, 0.92);
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.55);
   margin: 0;
   letter-spacing: -0.01em;
 }
 
-.hero-cora-logo {
-  position: absolute;
-  right: 16px;
-  bottom: 16px;
-  z-index: 3;
-
-  width: 42px;
-  height: 42px;
-  object-fit: contain;
-
-  opacity: 0.55;
-  pointer-events: none;
-  user-select: none;
-
-  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.35));
+.hero-caption {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.697);
+  margin: 0;
+  letter-spacing: -0.01em;
 }
 
-/* Height tweaks */
-@media (max-height: 520px) {
-  .login-container.login-compact {
-    padding: 24px 18px;
+/* ===========================
+   Responsive
+   =========================== */
+@media (max-width: 899px) {
+  .login-left {
+    padding: 24px;
   }
 
   .login-form-wrapper {
-    padding: 22px 22px 18px;
+    max-width: 100%;
+  }
+}
+
+@media (max-height: 700px) {
+  .login-left {
+    padding: 24px;
   }
 
   .login-title {
-    font-size: 26px;
+    font-size: 28px;
   }
 
   .form-input {
-    height: 42px;
+    height: 44px;
   }
 
   .login-button {
+    height: 46px;
+  }
+
+  .social-button {
     height: 44px;
   }
 }
@@ -603,10 +567,5 @@
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
-  }
-
-  .login-left,
-  .login-right {
-    transition: none !important;
   }
 }
