@@ -32,7 +32,6 @@ interface ChatSession {
   messageCount: number;
   chatMode: string;
   llmModel: string;
-  tokensUsed: number;
 }
 
 interface UserProfile {
@@ -98,17 +97,13 @@ async function loadUserProfile(user: any): Promise<UserProfile> {
 interface HeaderProps {
   userName: string;
   userRole: string | null;
-  credits: number;
-  maxCredits: number;
 }
 
-function Header({ userName, userRole, credits, maxCredits }: HeaderProps) {
+function Header({ userName, userRole }: HeaderProps) {
+  const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem(LS_KEY) === "1"; } catch { return false; }
   });
-  const [showCreditsModal, setShowCreditsModal] = useState(false);
-  const [emailSubject, setEmailSubject] = useState("");
-  const [emailContext, setEmailContext] = useState("");
 
   useEffect(() => {
     if (sidebarCollapsed) document.documentElement.classList.add(ROOT_COLLAPSED_CLASS);
@@ -126,13 +121,7 @@ function Header({ userName, userRole, credits, maxCredits }: HeaderProps) {
     });
   }, []);
 
-  const handleSendRequest = () => {
-    setEmailSubject(""); setEmailContext(""); setShowCreditsModal(false);
-    alert("Request sent!");
-  };
-
   const displayName = userName.trim() || "User";
-  const pct = maxCredits > 0 ? (credits / maxCredits) * 100 : 0;
 
   return (
     <>
@@ -146,43 +135,12 @@ function Header({ userName, userRole, credits, maxCredits }: HeaderProps) {
             <span className="dash_userName">{displayName}</span>
             {userRole && (<><span className="dash_userSeparator">/</span><span className="dash_userRole">{userRole}</span></>)}
           </div>
-          <div className="dash_creditsContainer">
-            <div className="dash_creditsBar"><div className="dash_creditsFill" style={{ width: `${pct}%` }} /></div>
-            <span className="dash_creditsText">{credits.toLocaleString()} Credits Left</span>
-            <button type="button" className="dash_creditsAddBtn" onClick={() => setShowCreditsModal(true)}><Plus size={14} /></button>
-          </div>
         </div>
         <div className="dash_headerRight">
           <button type="button" className="dash_headerBtn">Feedback</button>
-          <button type="button" className="dash_headerBtn">Docs</button>
+          <button type="button" className="dash_headerBtn" onClick={() => navigate("/notebook")}>Notebook</button>
         </div>
       </header>
-
-      {showCreditsModal && (
-        <div className="dash_modalOverlay" onClick={() => setShowCreditsModal(false)}>
-          <div className="dash_creditsModal" onClick={(e) => e.stopPropagation()}>
-            <div className="dash_creditsModalHeader">
-              <h2>Request More Tokens</h2>
-              <button type="button" className="dash_creditsModalClose" onClick={() => setShowCreditsModal(false)}><X size={18} /></button>
-            </div>
-            <p className="dash_creditsModalDesc">Need more tokens? Send us an email and we'll get back to you.</p>
-            <div className="dash_creditsModalForm">
-              <div className="dash_creditsModalField">
-                <label htmlFor="email-subject">Subject</label>
-                <input id="email-subject" type="text" value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} placeholder="e.g., Request for additional tokens" />
-              </div>
-              <div className="dash_creditsModalField">
-                <label htmlFor="email-context">Context</label>
-                <textarea id="email-context" value={emailContext} onChange={(e) => setEmailContext(e.target.value)} placeholder="Describe your request..." rows={4} />
-              </div>
-              <div className="dash_creditsModalActions">
-                <button type="button" className="dash_creditsModalCancel" onClick={() => setShowCreditsModal(false)}>Cancel</button>
-                <button type="button" className="dash_creditsModalSubmit" onClick={handleSendRequest} disabled={!emailSubject.trim() || !emailContext.trim()}>Send Request</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
@@ -378,8 +336,6 @@ export default function AskSentinela() {
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [totalTokens, setTotalTokens] = useState(10000);
-  const [remainingTokens, setRemainingTokens] = useState(10000);
 
   // Apply saved theme
   useEffect(() => {
@@ -400,25 +356,17 @@ export default function AskSentinela() {
     const load = async () => {
       setLoading(true);
 
-      // Token balance
-      const { data: balanceData, error: balanceErr } = await supabase
-        .schema("chat")
-        .rpc("get_token_balance", { p_auth_user_id: user.id, p_team_id: userProfile.teamId });
-      if (balanceErr) console.error("[Ask] Token balance error:", balanceErr);
-      if (balanceData?.[0]) {
-        setTotalTokens(balanceData[0].total_tokens);
-        setRemainingTokens(balanceData[0].remaining_tokens);
-      }
-
       // Sessions
       const { data: sessionsData, error: sessionsErr } = await supabase
         .schema("chat")
         .from("sessions")
-        .select("id, title, status, chat_mode, llm_model, message_count, tokens_used, created_at, updated_at")
+        .select("id, title, status, chat_mode, llm_model, message_count, created_at, updated_at")
         .eq("auth_user_id", user.id)
         .eq("team_id", userProfile.teamId)
         .eq("status", "active")
         .neq("chat_mode", "analysis")
+        .neq("chat_mode", "practice")
+        .neq("chat_mode", "automation")
         .order("updated_at", { ascending: false });
 
       if (sessionsErr) console.error("[Ask] Sessions error:", sessionsErr);
@@ -446,7 +394,6 @@ export default function AskSentinela() {
             messageCount: s.message_count || 0,
             chatMode: s.chat_mode || "",
             llmModel: s.llm_model || "",
-            tokensUsed: s.tokens_used || 0,
           });
         }
         setSessions(loaded);
@@ -461,7 +408,9 @@ export default function AskSentinela() {
 
   // ── Select chat → go to Dashboard with that session ──
   const handleSelectChat = (session: ChatSession) => {
+    console.log("[History] Setting continueSessionId:", session.id);
     try { sessionStorage.setItem("sentinela.continueSessionId", session.id); } catch {}
+    console.log("[History] Stored value:", sessionStorage.getItem("sentinela.continueSessionId"));
     navigate("/dashboard");
   };
 
@@ -483,6 +432,10 @@ export default function AskSentinela() {
 
   // ── Delete session permanently (messages + session) ──
   const handleDeleteChat = async (id: string) => {
+    // Never delete practice or automation sessions
+    const target = sessions.find(s => s.id === id);
+    if (target && (target.chatMode === "practice" || target.chatMode === "automation")) return;
+
     // Optimistically remove from UI immediately for snappy UX
     setSessions((prev) => prev.filter((s) => s.id !== id));
 
@@ -561,10 +514,13 @@ export default function AskSentinela() {
         const { data: sessionsData } = await supabase
           .schema("chat")
           .from("sessions")
-          .select("id, title, status, chat_mode, llm_model, message_count, tokens_used, created_at, updated_at")
+          .select("id, title, status, chat_mode, llm_model, message_count, created_at, updated_at")
           .eq("auth_user_id", user.id)
           .eq("team_id", userProfile.teamId)
           .eq("status", "active")
+          .neq("chat_mode", "analysis")
+          .neq("chat_mode", "practice")
+          .neq("chat_mode", "automation")
           .order("updated_at", { ascending: false });
 
         if (sessionsData) {
@@ -576,7 +532,6 @@ export default function AskSentinela() {
             messageCount: s.message_count || 0,
             chatMode: s.chat_mode || "",
             llmModel: s.llm_model || "",
-            tokensUsed: s.tokens_used || 0,
           }));
           setSessions(reloaded);
         }
@@ -597,7 +552,7 @@ export default function AskSentinela() {
 
   return (
     <div className="ask_root">
-      <Header userName={userProfile.name} userRole={userProfile.role} credits={remainingTokens} maxCredits={totalTokens} />
+      <Header userName={userProfile.name} userRole={userProfile.role} />
       <main className="ask_main">
         <ChatListView
           sessions={sessions} searchQuery={searchQuery} onSearchChange={setSearchQuery}

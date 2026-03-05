@@ -18,6 +18,13 @@ export interface AgentEvent {
   metadata?: Record<string, any>;
 }
 
+export interface PracticeChunk {
+  type: 'partial' | 'tool_status' | 'response';
+  content?: string;
+  tool?: string;
+  status?: string;
+}
+
 export interface AgentQuestion {
   question: string;
   options?: string[];
@@ -31,8 +38,14 @@ interface UseAgentChatOptions {
   sessionId?: string;
   interactionMode?: string;
   llmModel?: string;
+  mdContent?: string;
+  automationId?: string;
+  robotIds?: string[];
+  voiceEnabled?: boolean;
+  voiceId?: string;
   onEvent?: (event: AgentEvent) => void;
   onResponse?: (content: string) => void;
+  onPracticeChunk?: (chunk: PracticeChunk) => void;
   onError?: (error: string) => void;
   onAudioChunk?: (chunk: string) => void;
   onAudioDone?: () => void;
@@ -44,8 +57,13 @@ export interface ChatImage {
   base64: string;       // raw base64 data (no data: prefix)
 }
 
+export interface SendMessageOptions {
+  images?: ChatImage[];
+  voiceEnabled?: boolean;
+}
+
 interface UseAgentChatReturn {
-  sendMessage: (message: string, images?: ChatImage[]) => Promise<void>;
+  sendMessage: (message: string, options?: SendMessageOptions) => Promise<void>;
   confirmAnswers: (answers: { question: string; answer: string }[]) => Promise<void>;
   events: AgentEvent[];
   response: string | null;
@@ -94,6 +112,11 @@ export function useAgentChat(options: UseAgentChatOptions = {}): UseAgentChatRet
     userName = 'Usuario',
     interactionMode = 'chat',
     llmModel = '',
+    mdContent = '',
+    automationId = '',
+    robotIds = [],
+    voiceEnabled = false,
+    voiceId = '',
   } = options;
 
   const [events, setEvents] = useState<AgentEvent[]>([]);
@@ -109,6 +132,7 @@ export function useAgentChat(options: UseAgentChatOptions = {}): UseAgentChatRet
   // ── Stable callback refs (prevents stale closures & double fires) ──
   const onEventRef = useRef(options.onEvent);
   const onResponseRef = useRef(options.onResponse);
+  const onPracticeChunkRef = useRef(options.onPracticeChunk);
   const onErrorRef = useRef(options.onError);
   const onAudioChunkRef = useRef(options.onAudioChunk);
   const onAudioDoneRef = useRef(options.onAudioDone);
@@ -116,6 +140,7 @@ export function useAgentChat(options: UseAgentChatOptions = {}): UseAgentChatRet
 
   useEffect(() => { onEventRef.current = options.onEvent; }, [options.onEvent]);
   useEffect(() => { onResponseRef.current = options.onResponse; }, [options.onResponse]);
+  useEffect(() => { onPracticeChunkRef.current = options.onPracticeChunk; }, [options.onPracticeChunk]);
   useEffect(() => { onErrorRef.current = options.onError; }, [options.onError]);
   useEffect(() => { onAudioChunkRef.current = options.onAudioChunk; }, [options.onAudioChunk]);
   useEffect(() => { onAudioDoneRef.current = options.onAudioDone; }, [options.onAudioDone]);
@@ -205,13 +230,37 @@ export function useAgentChat(options: UseAgentChatOptions = {}): UseAgentChatRet
                   break;
                 }
 
+                case 'practice_chunk':
+                  onPracticeChunkRef.current?.(data as PracticeChunk);
+                  break;
+
                 case 'response':
                   // Dedup: skip if same response already fired
                   if (lastResponseRef.current === data.content) break;
                   lastResponseRef.current = data.content;
 
-                  setResponse(data.content);
-                  onResponseRef.current?.(data.content);
+                  // If chunks were already streamed, skip adding another message
+                  // — PracticeView already rendered the chunks in real-time
+                  if (!data.chunks_sent) {
+                    setResponse(data.content);
+                    onResponseRef.current?.(data.content);
+                  }
+
+                  // If response carries practice metadata, emit a practice_update event
+                  if (data.practice_completed != null || data.automation_step != null) {
+                    onEventRef.current?.({
+                      type: 'practice_update',
+                      source: 'system',
+                      content: '',
+                      timestamp: new Date().toISOString(),
+                      metadata: {
+                        completed: !!data.practice_completed,
+                        step: data.automation_step ?? 0,
+                        total_steps: data.total_steps ?? 0,
+                        chunks_sent: !!data.chunks_sent,
+                      },
+                    });
+                  }
                   break;
 
                 case 'suggestions':
@@ -245,6 +294,16 @@ export function useAgentChat(options: UseAgentChatOptions = {}): UseAgentChatRet
                   break;
                 }
 
+                case 'practice_update':
+                  onEventRef.current?.({
+                    type: 'practice_update',
+                    source: 'system',
+                    content: '',
+                    timestamp: new Date().toISOString(),
+                    metadata: data,
+                  });
+                  break;
+
                 case 'error':
                   setError(data.message);
                   onErrorRef.current?.(data.message);
@@ -268,7 +327,10 @@ export function useAgentChat(options: UseAgentChatOptions = {}): UseAgentChatRet
     }
   }, [apiUrl]); // Only apiUrl - callbacks are stable via refs
 
-  const sendMessage = useCallback(async (message: string, images?: ChatImage[]) => {
+  const sendMessage = useCallback(async (message: string, options?: SendMessageOptions) => {
+    const images = options?.images;
+    const perCallVoice = options?.voiceEnabled;
+
     // Build message field: plain string if no images, or multimodal content blocks
     let messagePayload: string | Record<string, any>[] = message;
     if (images && images.length > 0) {
@@ -287,15 +349,28 @@ export function useAgentChat(options: UseAgentChatOptions = {}): UseAgentChatRet
       messagePayload = blocks;
     }
 
-    await processStream('/api/chat', {
+    const payload: Record<string, any> = {
       message: messagePayload,
       user_id: userId,
       user_name: userName,
       session_id: sessionId,
       interaction_mode: interactionMode,
       llm_model: llmModel,
-    });
-  }, [processStream, userId, userName, sessionId, interactionMode, llmModel]);
+      automation_md_content: mdContent || null,
+      automation_id: automationId || null,
+    };
+    if (robotIds.length > 0) {
+      payload.robot_ids = robotIds;
+    }
+    if (perCallVoice || voiceEnabled) {
+      payload.voice_enabled = true;
+    }
+    if (voiceId) {
+      payload.voice_id = voiceId;
+    }
+    console.log("[useAgentChat] POST payload:", { interaction_mode: interactionMode, automation_id: automationId, robot_ids: robotIds, voice_enabled: perCallVoice || voiceEnabled, md_content_length: mdContent?.length ?? 0, md_content_preview: mdContent?.substring(0, 80) });
+    await processStream('/api/chat', payload);
+  }, [processStream, userId, userName, sessionId, interactionMode, llmModel, mdContent, automationId, robotIds, voiceEnabled, voiceId]);
 
   const confirmAnswers = useCallback(async (
     answers: { question: string; answer: string }[]

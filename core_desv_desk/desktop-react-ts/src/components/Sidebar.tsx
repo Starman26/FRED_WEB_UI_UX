@@ -1,17 +1,17 @@
 // src/components/Sidebar.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BeakerIcon,
   ArrowRightOnRectangleIcon,
   UserIcon,
   ChevronUpDownIcon,
   CheckIcon,
-  SparklesIcon,
   InformationCircleIcon,
   XMarkIcon,
   UserCircleIcon,
   ClockIcon,
   ChartBarIcon,
+  BookOpenIcon,
 } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -57,6 +57,17 @@ type Member = {
   full_name: string | null;
   auth_user_id: string | null;
 };
+
+function BentoIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="4.5" height="5" rx="1" />
+      <rect x="10.5" y="3" width="4.5" height="3" rx="1" />
+      <rect x="10.5" y="9" width="4.5" height="6" rx="1" />
+      <rect x="3" y="11" width="4.5" height="4" rx="1" />
+    </svg>
+  );
+}
 
 const LS_KEY = "cora_sidebar_collapsed";
 const ROOT_COLLAPSED_CLASS = "cora-sidebar-collapsed";
@@ -149,6 +160,55 @@ export function Sidebar({
   const [isCardHovered, setIsCardHovered] = useState(false);
   const [showAgentInfo, setShowAgentInfo] = useState(false);
 
+  // Eye animation state
+  type EyeState = "idle" | "blink" | "wide" | "look";
+  const [eyeState, setEyeState] = useState<EyeState>("idle");
+  const [lookDir, setLookDir] = useState({ x: 0, y: 0 });
+  const eyeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const runEyeLoop = useCallback(() => {
+    if (eyeTimerRef.current) clearTimeout(eyeTimerRef.current);
+
+    const actions: EyeState[] = ["blink", "blink", "wide", "look", "idle", "idle"];
+    const pick = actions[Math.floor(Math.random() * actions.length)];
+
+    if (pick === "blink") {
+      setEyeState("blink");
+      eyeTimerRef.current = setTimeout(() => {
+        setEyeState("idle");
+        eyeTimerRef.current = setTimeout(runEyeLoop, 1500 + Math.random() * 3500);
+      }, 180);
+    } else if (pick === "wide") {
+      setEyeState("wide");
+      eyeTimerRef.current = setTimeout(() => {
+        setEyeState("idle");
+        eyeTimerRef.current = setTimeout(runEyeLoop, 1500 + Math.random() * 3000);
+      }, 1000 + Math.random() * 1500);
+    } else if (pick === "look") {
+      setLookDir({ x: (Math.random() - 0.5) * 8, y: (Math.random() - 0.5) * 6 });
+      setEyeState("look");
+      eyeTimerRef.current = setTimeout(() => {
+        setEyeState("idle");
+        setLookDir({ x: 0, y: 0 });
+        eyeTimerRef.current = setTimeout(runEyeLoop, 1500 + Math.random() * 3000);
+      }, 1500 + Math.random() * 2500);
+    } else {
+      setEyeState("idle");
+      eyeTimerRef.current = setTimeout(runEyeLoop, 2000 + Math.random() * 4000);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!collapsed && !isThinking) {
+      eyeTimerRef.current = setTimeout(runEyeLoop, 1000 + Math.random() * 2000);
+    } else {
+      if (eyeTimerRef.current) clearTimeout(eyeTimerRef.current);
+      setEyeState("idle");
+      setLookDir({ x: 0, y: 0 });
+    }
+    return () => { if (eyeTimerRef.current) clearTimeout(eyeTimerRef.current); };
+  }, [collapsed, isThinking, runEyeLoop]);
+
   const activeTeam = useMemo(() => {
     if (!activeTeamId) return null;
     return teams.find((t) => t.id === activeTeamId) || null;
@@ -158,9 +218,10 @@ export function Sidebar({
   const allNavItems: NavItem[] = useMemo(
     () => [
       { key: "inicio", label: "Agent", icon: UserCircleIcon, badge: null },
-      { key: "proyectos", label: "Studio", icon: SparklesIcon, badge: "Beta" },
+      { key: "proyectos", label: "Studio", icon: BentoIcon, badge: "Beta" },
       { key: "living", label: "Living Lab", icon: BeakerIcon, badge: null },
       { key: "chat", label: "History", icon: ClockIcon, badge: null },
+      { key: "notebook", label: "Notebook", icon: BookOpenIcon, badge: null },
       { key: "widget", label: "Analysis", icon: ChartBarIcon, badge: null },
     ],
     []
@@ -171,7 +232,7 @@ export function Sidebar({
       title: "Main",
       items: [
         { key: "inicio", label: "Agent", icon: UserCircleIcon, badge: null },
-        { key: "proyectos", label: "Studio", icon: SparklesIcon, badge: "Beta", isSubitem: true },
+        { key: "proyectos", label: "Studio", icon: BentoIcon, badge: "Beta", isSubitem: true },
         { key: "living", label: "Living Lab", icon: BeakerIcon, badge: null },
         { key: "chat", label: "History", icon: ClockIcon, badge: null },
       ],
@@ -182,7 +243,10 @@ export function Sidebar({
   const configSection: NavSection = useMemo(
     () => ({
       title: "Configure",
-      items: [{ key: "widget", label: "Analysis", icon: ChartBarIcon }],
+      items: [
+        { key: "notebook", label: "Notebook", icon: BookOpenIcon },
+        { key: "widget", label: "Analysis", icon: ChartBarIcon },
+      ],
     }),
     []
   );
@@ -356,59 +420,51 @@ export function Sidebar({
 
   return (
     <aside className={`sidebar drag-region ${collapsed ? "is-collapsed" : ""}`}>
-      {/* Header with user avatar */}
-      <div className="sidebar__header drag-region">
-        <div className="sidebar__avatar-large">
-          <img src={orionLogo} alt="Orion Logo" className="sidebar__logo--default" />
-          <img src={orionLogoWhite} alt="Orion Logo" className="sidebar__logo--white" />
-        </div>
-        
-        <div className="sidebar__brand">
-          <div className="sidebar__brandTitle sidebar__brandTitle--spaced">
-            ORION
+      {/* Unified header: logo + workspace switcher */}
+      <div className={`sidebar__header no-drag ${collapsed ? "is-collapsed" : ""}`} ref={switcherRef}>
+        <button
+          type="button"
+          className="sidebar__workspaceBtn"
+          onClick={() => setSwitcherOpen((v) => !v)}
+          disabled={loadingTeams}
+        >
+          <div className="sidebar__avatar-large">
+            <img src={orionLogo} alt="Orion Logo" className="sidebar__logo--default" />
+            <img src={orionLogoWhite} alt="Orion Logo" className="sidebar__logo--white" />
           </div>
-          <div className="sidebar__brandSub">Lab Assistant</div>
-        </div>
-      </div>
-
-      {/* Workspace selector */}
-      <div className={`sidebar__workspace no-drag ${collapsed ? "is-collapsed" : ""}`}>
-        <div className="sidebar__workspaceInner" ref={switcherRef}>
-          <button
-            type="button"
-            className="sidebar__workspaceBtn"
-            onClick={() => setSwitcherOpen((v) => !v)}
-            disabled={loadingTeams}
-          >
-            <span className="sidebar__workspaceName">
-              {loadingTeams ? "Loading..." : activeTeam?.name || "Select lab"}
+          <div className="sidebar__workspaceInfo">
+            <span className="sidebar__workspaceName">Orion</span>
+            <span className="sidebar__workspaceId">
+              {activeTeamId ? activeTeamId.slice(0, 7).toUpperCase() : "---"}
             </span>
-            <ChevronUpDownIcon className="sidebar__chev" />
-          </button>
+          </div>
+          <ChevronUpDownIcon className="sidebar__chev" />
+        </button>
 
-          {switcherOpen && (
-            <div className="sidebar__dropdown">
-              {teams.length === 0 ? (
-                <div className="sidebar__dropdownEmpty">No labs found</div>
-              ) : (
-                teams.map((t) => {
-                  const selected = t.id === activeTeamId;
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      className={`sidebar__dropdownItem ${selected ? "is-selected" : ""}`}
-                      onClick={() => handleSelectTeam(t.id)}
-                    >
-                      <span className="sidebar__dropdownName">{t.name || "Untitled"}</span>
-                      {selected && <CheckIcon className="sidebar__check" />}
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          )}
-        </div>
+        {switcherOpen && (
+          <div className="sidebar__dropdown">
+            {teams.length === 0 ? (
+              <div className="sidebar__dropdownEmpty">No labs found</div>
+            ) : (
+              teams.map((t) => {
+                const selected = t.id === activeTeamId;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={`sidebar__dropdownItem ${selected ? "is-selected" : ""}`}
+                    onClick={() => handleSelectTeam(t.id)}
+                  >
+                    <span className="sidebar__dropdownName">{t.name || "Untitled"}</span>
+                    {selected && <CheckIcon className="sidebar__check" />}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {/* Collapsed: just show dot */}
         <div className="sidebar__workspaceDot" title={activeTeam?.name || "Lab"} />
       </div>
 
@@ -418,7 +474,7 @@ export function Sidebar({
         {/* COLLAPSED VIEW: Icons separated in two groups */}
         <div className="sidebar__collapsedNav">
           <div className="sidebar__collapsedGroup sidebar__collapsedGroup--top">
-            {allNavItems.filter(item => item.key !== "widget").map(({ key, label, icon: Icon }) => {
+            {allNavItems.filter(item => item.key !== "widget" && item.key !== "notebook").map(({ key, label, icon: Icon }) => {
               const active = current === key;
               return (
                 <button
@@ -434,7 +490,7 @@ export function Sidebar({
             })}
           </div>
           <div className="sidebar__collapsedGroup sidebar__collapsedGroup--bottom">
-            {allNavItems.filter(item => item.key === "widget").map(({ key, label, icon: Icon }) => {
+            {allNavItems.filter(item => item.key === "widget" || item.key === "notebook").map(({ key, label, icon: Icon }) => {
               const active = current === key;
               return (
                 <button
@@ -482,8 +538,14 @@ export function Sidebar({
             onMouseLeave={() => setIsCardHovered(false)}
           >
             <div className={`sidebar__simpleEyes ${isThinking ? "is-thinking" : ""}`}>
-              <div className="sidebar__eye"></div>
-              <div className="sidebar__eye"></div>
+              <div
+                className={`sidebar__eye ${!isThinking && eyeState !== "idle" ? `sidebar__eye--${eyeState}` : ""}`}
+                style={eyeState === "look" ? { "--look-x": `${lookDir.x}px`, "--look-y": `${lookDir.y}px` } as React.CSSProperties : undefined}
+              />
+              <div
+                className={`sidebar__eye ${!isThinking && eyeState !== "idle" ? `sidebar__eye--${eyeState}` : ""}`}
+                style={eyeState === "look" ? { "--look-x": `${lookDir.x}px`, "--look-y": `${lookDir.y}px` } as React.CSSProperties : undefined}
+              />
             </div>
 
             {/* Info button - appears on hover */}

@@ -445,6 +445,7 @@
   background: #fafafa;
   min-height: 0;
   overflow: hidden;
+  position: relative;
 }
 
 /* ============================================================================
@@ -1625,6 +1626,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  position: relative;
 }
 
 .dash_pendingFiles {
@@ -1872,7 +1874,7 @@
   min-height: 22px;
   max-height: 120px;
   line-height: 1.5;
-  padding-right: 50px;
+  padding-right: 90px;
 }
 
 .dash_chatTextarea::placeholder {
@@ -1910,27 +1912,38 @@
 }
 
 .dash_chatFooter {
+  position: absolute;
+  right: 52px;
+  bottom: 10px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 0;
 }
 
 .dash_chatFooterBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  width: 32px;
+  height: 32px;
   padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
   font-size: 12px;
   font-weight: 400;
-  color: rgba(16, 17, 19, 0.55);
+  color: rgba(16, 17, 19, 0.4);
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.dash_chatFooterBtn span {
+  display: none;
 }
 
 .dash_chatFooterBtn:hover:not(:disabled) {
   color: #101113;
+  background: rgba(16, 17, 19, 0.06);
 }
 
 .dash_chatFooterBtn:disabled {
@@ -1940,6 +1953,19 @@
 
 .dash_hiddenInput {
   display: none;
+}
+
+/* ============================================================================
+   WELCOME MODE CHAT INPUT - Taller input
+   ============================================================================ */
+
+.dash_chatWrapper--welcome .dash_chatInputBox {
+  min-height: 100px;
+  align-items: flex-end;
+}
+
+.dash_chatWrapper--welcome .dash_chatTextarea {
+  min-height: 70px;
 }
 
 /* ============================================================================
@@ -2279,22 +2305,13 @@
   flex-shrink: 0;
 }
 
-/* Custom scrollbar for messages */
+/* Hide scrollbar in chat messages */
+.dash_messagesArea {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
 .dash_messagesArea::-webkit-scrollbar {
-  width: 6px;
-}
-
-.dash_messagesArea::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.dash_messagesArea::-webkit-scrollbar-thumb {
-  background: rgba(16, 17, 19, 0.15);
-  border-radius: 3px;
-}
-
-.dash_messagesArea::-webkit-scrollbar-thumb:hover {
-  background: rgba(16, 17, 19, 0.25);
+  display: none;
 }
 
 /* Message wrapper for positioning bubble + external timestamp */
@@ -2512,6 +2529,7 @@
   border: none;
   padding-left: 0;
   padding-right: 0;
+  max-width: 100%;
 }
 
 /* Message footer with timestamp */
@@ -2627,6 +2645,26 @@
   width: 100%;
   align-self: center;
 }
+
+/* ── Rectangle above chat input ── */
+
+.dash_chatAboveBox {
+  height: 44px;
+  background: #ffffff;
+  border: 1px solid rgba(16, 17, 19, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(16, 17, 19, 0.03);
+  margin-bottom: 10px;
+}
+
+.dash_chatDisclaimer {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(16, 17, 19, 0.5);
+  text-align: center;
+}
+
 /* ── Truncate LLM dropdown text ── */
 .dash_dropdownTrigger {
   max-width: 130px;
@@ -2746,6 +2784,24 @@
   background: #2a2b2e;
 }
 
+.dash_hitlOption--selected {
+  background: #101113;
+  color: #ffffff;
+  border-color: #101113;
+}
+
+.dash_hitlOption--selected:hover {
+  background: #2a2b2e;
+}
+
+.dash_hitlOtherInput {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 .dash_hitlTextInput {
   display: flex;
   flex-direction: column;
@@ -2861,66 +2917,59 @@
    ============================================================================ */
 
 .dash_suggestions {
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(16, 17, 19, 0.08);
-}
-
-.dash_suggestionsTitle {
-  font-size: 13px;
-  font-weight: 500;
-  color: rgba(16, 17, 19, 0.5);
-  margin-bottom: 12px;
+  margin-top: 16px;
 }
 
 .dash_suggestionsList {
   display: flex;
   flex-direction: column;
+  gap: 6px;
 }
 
 .dash_suggestionBtn {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
   width: 100%;
-  padding: 14px 12px;
+  padding: 12px 14px;
   background: transparent;
   border: none;
-  border-top: 1px solid rgba(16, 17, 19, 0.06);
+  border-bottom: 1px solid #f3f4f6;
+  border-radius: 0;
   cursor: pointer;
   text-align: left;
-  transition: all 0.15s ease;
-  position: relative;
+  transition: background 0.15s ease;
 }
 
-.dash_suggestionBtn:first-child {
-  border-top: none;
+.dash_suggestionBtn:last-child {
+  border-bottom: none;
 }
 
 .dash_suggestionBtn:hover {
-  background: rgba(16, 17, 19, 0.03);
+  background: #f9fafb;
+}
+
+.dash_suggestionIcon {
+  flex-shrink: 0;
+  color: #9ca3af;
 }
 
 .dash_suggestionBtn span {
-  font-size: 14px;
-  color: rgba(16, 17, 19, 0.7);
-  transition: color 0.15s ease;
-}
-
-.dash_suggestionBtn:hover span {
-  color: #101113;
+  flex: 1;
+  font-size: 13.5px;
+  color: #374151;
+  line-height: 1.4;
 }
 
 .dash_suggestionArrow {
-  color: rgba(16, 17, 19, 0.3);
-  opacity: 0;
-  transform: translateX(-8px);
-  transition: all 0.2s ease;
+  flex-shrink: 0;
+  color: #d1d5db;
+  transition: color 0.15s ease, transform 0.15s ease;
 }
 
 .dash_suggestionBtn:hover .dash_suggestionArrow {
-  opacity: 1;
-  transform: translateX(0);
+  color: #9ca3af;
+  transform: translateX(2px);
 }
 /* ============================================================================
    WELCOME CENTER - Centered empty state with sun icon
@@ -2930,15 +2979,38 @@
   flex: 1;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   min-height: 0;
+  max-width: 720px;
+  width: 100%;
+  align-self: center;
+}
+
+/* Subtle left-edge tint — only when welcome screen is visible */
+.dash_content:has(.dash_welcomeCenter)::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 150px;
+  background-color: rgba(0, 0, 0, 0.025);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Sidebar collapsed — wider rectangle since more space available */
+html.cora-sidebar-collapsed .dash_content:has(.dash_welcomeCenter)::before {
+  width: 250px;
 }
 
 .dash_welcomeContent {
+  position: relative;
+  z-index: 1;
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 32px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
   animation: welcomeFadeIn 0.6s ease-out;
 }
 
@@ -2954,9 +3026,7 @@
 }
 
 .dash_welcomeSunIcon {
-  color: rgba(16, 17, 19, 0.7);
-  flex-shrink: 0;
-  animation: sunRotateSlow 25s linear infinite;
+  display: none;
 }
 
 @keyframes sunRotateSlow {
@@ -2968,28 +3038,34 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: 0;
 }
 
 .dash_welcomeLabel {
-  font-size: 11px;
-  font-weight: 500;
-  color: rgba(16, 17, 19, 0.45);
+  display: none;
+}
+
+.dash_welcomeSubLabel {
+  font-size: 0.8rem;
+  color: rgba(0, 0, 0, 0.35);
+  font-weight: 400;
+  margin: 0 0 8px 0;
   letter-spacing: 0.02em;
 }
 
 .dash_welcomeGreeting {
-  font-size: 22px;
-  font-weight: 600;
+  font-size: 2.5rem;
+  font-weight: 300;
   color: #101113;
-  line-height: 1.25;
-  margin: 0 0 4px 0;
-  letter-spacing: -0.01em;
+  line-height: 1.2;
+  margin: 0 0 24px 0;
+  letter-spacing: -0.02em;
+  max-width: 500px;
 }
 
 .dash_welcomeStats {
   display: flex;
-  margin-top: 12px;
+  margin-top: 0;
   overflow: hidden;
 }
 
@@ -3006,9 +3082,21 @@
 .dash_welcomeStats .dash_statsList {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 4px 0;
+  gap: 8px;
+  padding: 2px 0;
   text-align: left;
+}
+
+.dash_welcomeStats .dash_statItem {
+  gap: 6px;
+}
+
+.dash_welcomeStats .dash_statValue {
+  font-size: 13px;
+}
+
+.dash_welcomeStats .dash_statLabel {
+  font-size: 12px;
 }
 
 /* ============================================================================
@@ -3020,7 +3108,6 @@
   color: #101113;
   opacity: 1;
   cursor: pointer;
-  position: relative;
 }
 
 .dash_chatSendBtn--stop::before {
@@ -3101,4 +3188,199 @@
 /* ─── Tighter layout when chat has messages ─── */
 .dash_right--expanded {
   padding-top: 4px !important;
+}
+
+/* ============================================================================
+   VERTICAL TOOLBAR (right edge of dash_content)
+   ============================================================================ */
+
+.dash_toolbar {
+  position: relative;
+  width: 56px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0 80px;
+  background: transparent;
+  z-index: 50;
+}
+
+.dash_toolbarIcons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+/* ── Toolbar icon button ── */
+.dash_toolbarBtn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  color: rgba(16, 17, 19, 0.45);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.dash_toolbarBtn:hover {
+  color: rgba(16, 17, 19, 0.75);
+  background: rgba(16, 17, 19, 0.05);
+}
+
+.dash_toolbarBtn.is-active {
+  color: #101113;
+  background: rgba(16, 17, 19, 0.08);
+}
+
+.dash_toolbarBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.dash_toolbarBtn svg {
+  flex-shrink: 0;
+}
+
+/* ── Separator ── */
+.dash_toolbarSep {
+  width: 24px;
+  height: 1px;
+  background: rgba(16, 17, 19, 0.08);
+  margin: 6px 0;
+}
+
+/* ============================================================================
+   FLYOUT POPOVER (opens left of toolbar)
+   ============================================================================ */
+
+.dash_flyout {
+  position: absolute;
+  right: calc(100% + 8px);
+  width: 220px;
+  max-height: 400px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: none;
+  padding: 6px;
+  z-index: 200;
+  animation: flyoutIn 0.18s ease;
+}
+
+@keyframes flyoutIn {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ── Flyout scrollbar ── */
+.dash_flyout::-webkit-scrollbar {
+  width: 4px;
+}
+.dash_flyout::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dash_flyout::-webkit-scrollbar-thumb {
+  background: rgba(16, 17, 19, 0.12);
+  border-radius: 2px;
+}
+
+/* ── Flyout section ── */
+.dash_flyoutSection {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dash_flyoutSection + .dash_flyoutSection {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(16, 17, 19, 0.06);
+}
+
+/* ── Flyout label ── */
+.dash_flyoutLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(16, 17, 19, 0.35);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 12px 14px 8px;
+}
+
+/* ── Flyout item ── */
+.dash_flyoutItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(16, 17, 19, 0.85);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease, color 0.12s ease;
+  position: relative;
+}
+
+.dash_flyoutItem svg {
+  flex-shrink: 0;
+  color: rgba(16, 17, 19, 0.45);
+}
+
+.dash_flyoutItem:hover {
+  background: rgba(16, 17, 19, 0.05);
+}
+
+.dash_flyoutItem.is-selected {
+  background: #18191c;
+  color: #ffffff;
+}
+
+.dash_flyoutItem.is-selected svg {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dash_flyoutItem.is-selected .dash_flyoutCheck {
+  color: #ffffff;
+}
+
+/* ── Flyout checkmark ── */
+.dash_flyoutCheck {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* ── Flyout action item (e.g. "View all") ── */
+.dash_flyoutItem--action {
+  color: rgba(16, 17, 19, 0.45);
+  font-size: 12px;
+  font-weight: 400;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(16, 17, 19, 0.06);
+  border-radius: 0 0 8px 8px;
+}
+
+.dash_flyoutItem--action:hover {
+  color: #101113;
 }

@@ -10,12 +10,13 @@ import { AppLayout } from "./components/AppLayout";
 // Pages
 import Login from "./pages/Login";
 import Onboarding from "./pages/Onboarding";
-import Dashboard from "./pages/Dashboard";
-import Chat from "./pages/Chat";
-import Projects from "./pages/Projects";
-import Config from "./pages/Config";
+import Dashboard from "./pages/Home";
+import Chat from "./pages/History";
+import Projects from "./pages/Studio";
+import Config from "./pages/Analyze";
 import ProfilePage from "./pages/Profile";
-import LivingLabPage from "./pages/LivingLabPage";
+import LivingLabPage from "./pages/Lab_Overview";
+import Notebook from "./pages/Notebook";
 
 function AppRoutes() {
   return (
@@ -51,6 +52,7 @@ function AppRoutes() {
             <Route path="/config" element={<Config />} />
             <Route path="/living" element={<LivingLabPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/notebook" element={<Notebook />} />
           </Route>
 
           {/* Fallback */}

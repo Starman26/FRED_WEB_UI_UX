@@ -217,17 +217,26 @@ interface HITLWizardProps {
   onComplete: () => void;
 }
 
-function HITLWizard({ 
-  questions, 
-  currentIndex, 
-  onAnswer, 
+function HITLWizard({
+  questions,
+  currentIndex,
+  onAnswer,
   onSkip,
-  onComplete 
+  onComplete
 }: HITLWizardProps) {
   const [textAnswer, setTextAnswer] = useState("");
-  
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [otherText, setOtherText] = useState("");
+
+  // Reset selection state when question changes
+  useEffect(() => {
+    setSelectedOption(null);
+    setOtherText("");
+    setTextAnswer("");
+  }, [currentIndex]);
+
   if (questions.length === 0) return null;
-  
+
   // Check if all questions answered
   if (currentIndex >= questions.length) {
     return (
@@ -236,8 +245,8 @@ function HITLWizard({
           <Check size={24} />
         </div>
         <p>All questions answered</p>
-        <button 
-          type="button" 
+        <button
+          type="button"
           className="dash_hitlSubmitBtn"
           onClick={onComplete}
         >
@@ -247,26 +256,56 @@ function HITLWizard({
       </div>
     );
   }
-  
+
   const currentQ = questions[currentIndex];
   const progress = (currentIndex / questions.length) * 100;
-  
-  const handleOptionSelect = (value: string) => {
-    onAnswer(currentQ.id, value);
+
+  // Detect if an option is "Other/Otro"
+  const isOtherOption = (opt: { label: string; value: string }) => {
+    const lbl = opt.label.toLowerCase();
+    const val = opt.value.toLowerCase();
+    return val === "other" || val === "otro"
+      || lbl.includes("otro") || lbl.includes("other");
   };
-  
+
+  const handleOptionSelect = (value: string, option: { label: string; value: string }) => {
+    if (isOtherOption(option)) {
+      // Select "other" but don't submit yet — show text input
+      setSelectedOption(value);
+    } else {
+      // Regular option: submit immediately
+      setSelectedOption(null);
+      setOtherText("");
+      onAnswer(currentQ.id, value);
+    }
+  };
+
+  const handleOtherSubmit = () => {
+    if (otherText.trim()) {
+      onAnswer(currentQ.id, otherText.trim());
+      setSelectedOption(null);
+      setOtherText("");
+    }
+  };
+
   const handleTextSubmit = () => {
     if (textAnswer.trim()) {
       onAnswer(currentQ.id, textAnswer.trim());
       setTextAnswer("");
     }
   };
-  
+
   const handleSkip = () => {
     onSkip(currentQ.id);
     setTextAnswer("");
+    setSelectedOption(null);
+    setOtherText("");
   };
-  
+
+  // Check if any option in current question is "other"
+  const hasOtherSelected = selectedOption !== null
+    && currentQ.options?.some(o => isOtherOption(o) && o.value === selectedOption);
+
   return (
     <div className="dash_hitlWizard">
       <div className="dash_hitlCard">
@@ -275,24 +314,24 @@ function HITLWizard({
             QUESTION {currentIndex + 1} OF {questions.length}
           </span>
         </div>
-        
+
         <div className="dash_hitlQuestion">
           {currentQ.question}
         </div>
-        
+
         <div className="dash_hitlProgress">
           <span className="dash_hitlProgressLabel">Progress</span>
           <div className="dash_hitlProgressBar">
-            <div 
-              className="dash_hitlProgressFill" 
-              style={{ width: `${progress}%` }} 
+            <div
+              className="dash_hitlProgressFill"
+              style={{ width: `${progress}%` }}
             />
           </div>
           <span className="dash_hitlProgressCount">
             {currentIndex + 1}/{questions.length}
           </span>
         </div>
-        
+
         {/* Options or text input */}
         {currentQ.options && currentQ.options.length > 0 ? (
           <div className="dash_hitlOptions">
@@ -300,12 +339,43 @@ function HITLWizard({
               <button
                 key={option.value}
                 type="button"
-                className={`dash_hitlOption ${idx === 0 ? "dash_hitlOption--primary" : ""}`}
-                onClick={() => handleOptionSelect(option.value)}
+                className={`dash_hitlOption ${idx === 0 && !selectedOption ? "dash_hitlOption--primary" : ""} ${selectedOption === option.value ? "dash_hitlOption--selected" : ""}`}
+                onClick={() => handleOptionSelect(option.value, option)}
               >
                 {option.label}
               </button>
             ))}
+
+            {/* "Other" text input — shown when an "Otro/Other" option is selected */}
+            {hasOtherSelected && (
+              <div className="dash_hitlOtherInput">
+                <textarea
+                  value={otherText}
+                  onChange={(e) => setOtherText(e.target.value)}
+                  placeholder="Especifica tu respuesta..."
+                  className="dash_hitlTextarea"
+                  rows={2}
+                  autoFocus
+                />
+                <div className="dash_hitlTextActions">
+                  <button
+                    type="button"
+                    className="dash_hitlContinueBtn"
+                    onClick={handleOtherSubmit}
+                    disabled={!otherText.trim()}
+                  >
+                    Continue
+                  </button>
+                  <button
+                    type="button"
+                    className="dash_hitlSkipBtn"
+                    onClick={handleSkip}
+                  >
+                    Skip question
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="dash_hitlTextInput">
@@ -342,187 +412,12 @@ function HITLWizard({
 }
 
 // ============================================================================
-// ICONS
-// ============================================================================
-
-function AgentIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <circle cx="6" cy="9" r="5.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
-      <circle cx="12" cy="9" r="4.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
-    </svg>
-  );
-}
-
-function SettingsIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-function ChevronUpDownIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M7 15l5 5 5-5" />
-      <path d="M7 9l5-5 5 5" />
-    </svg>
-  );
-}
-
-// ============================================================================
-// SESSION SELECTOR
-// ============================================================================
-
-interface SessionSelectorProps {
-  sessions: Session[];
-  currentSessionId: string;
-  onSelectSession: (id: string) => void;
-  onViewAll?: () => void;
-}
-
-function SessionSelector({ sessions, currentSessionId, onSelectSession, onViewAll }: SessionSelectorProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const currentSession = sessions.find(s => s.id === currentSessionId);
-  const MAX_VISIBLE = 3;
-  const visibleSessions = sessions.slice(0, MAX_VISIBLE);
-  const hasMore = sessions.length > MAX_VISIBLE;
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
-
-  return (
-    <div className="dash_sessionSelector" ref={dropdownRef}>
-      <span className="dash_sessionLabel">Session /</span>
-      <button
-        type="button"
-        className="dash_sessionTrigger"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <span>{currentSession?.title || "Welcome"}</span>
-        <ChevronUpDownIcon />
-      </button>
-      
-      {isOpen && (
-        <div className="dash_sessionMenu">
-          {visibleSessions.map((session) => (
-            <button
-              key={session.id}
-              type="button"
-              className={`dash_sessionItem ${session.id === currentSessionId ? "is-selected" : ""}`}
-              onClick={() => {
-                onSelectSession(session.id);
-                setIsOpen(false);
-              }}
-            >
-              <span className="dash_sessionItemTitle">{session.title}</span>
-              <span className="dash_sessionItemMeta">
-                {session.messages.length} message{session.messages.length !== 1 ? "s" : ""}
-              </span>
-            </button>
-          ))}
-          {hasMore && onViewAll && (
-            <button
-              type="button"
-              className="dash_sessionViewAll"
-              onClick={() => {
-                setIsOpen(false);
-                onViewAll();
-              }}
-            >
-              View all ({sessions.length})
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ============================================================================
-// DROPDOWN SELECT
+// DROPDOWN OPTION TYPE (used by toolbar flyouts)
 // ============================================================================
 
 interface DropdownOption {
   value: string;
   label: string;
-}
-
-interface DropdownSelectProps {
-  label: string;
-  value: string;
-  options: DropdownOption[];
-  onChange: (value: string) => void;
-}
-
-function DropdownSelect({ label, value, options, onChange }: DropdownSelectProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const selectedOption = options.find(o => o.value === value);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
-
-  return (
-    <div className="dash_dropdownGroup">
-      <span className="dash_dropdownLabel">{label}</span>
-      <div className="dash_dropdownWrapper" ref={dropdownRef}>
-        <button
-          type="button"
-          className="dash_dropdownTrigger"
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          <span>{selectedOption?.label || value}</span>
-          <ChevronUpDownIcon />
-        </button>
-        
-        {isOpen && (
-          <div className="dash_dropdownMenu">
-            {options.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                className={`dash_dropdownItem ${option.value === value ? "is-selected" : ""}`}
-                onClick={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
 }
 
 async function loadUserProfile(user: any): Promise<{ name: string; role: string | null; teamId: string | null }> {
@@ -572,24 +467,23 @@ interface DashboardHeaderProps {
   currentPage?: string;
   credits: number;
   maxCredits: number;
-  onChangeAgent?: () => void;
   titleBarVisible?: boolean;
   headerMinimal?: boolean;
   onToggleTitleBar?: () => void;
 }
 
 function DashboardHeader({ 
-  userName, 
-  userRole, 
+  userName,
+  userRole,
   userError,
   currentPage = "Home",
   credits,
   maxCredits,
-  onChangeAgent,
   //titleBarVisible = true,
   headerMinimal = false,
-  onToggleTitleBar 
+  onToggleTitleBar
 }: DashboardHeaderProps) {
+  const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     try {
       return localStorage.getItem(LS_KEY) === "1";
@@ -752,17 +646,6 @@ function DashboardHeader({
 
         {!headerMinimal && (
           <div className="dash_headerRight">
-          <button 
-            type="button" 
-            className="dash_changeAgentBtn"
-            onClick={onChangeAgent}
-          >
-            <AgentIcon />
-            <span>Change agent</span>
-          </button>
-          
-          <div className="dash_headerDivider" />
-          
           <button type="button" className="dash_headerBtn">
             Feedback
           </button>
@@ -839,8 +722,8 @@ function DashboardHeader({
           </div>
 
 
-          <button type="button" className="dash_headerBtn">
-            Docs
+          <button type="button" className="dash_headerBtn" onClick={() => navigate("/notebook")}>
+            Notebook
           </button>
         </div>
         )}
@@ -940,13 +823,15 @@ export default function Dashboard() {
   });
   
   // Settings dropdowns
-  const [focusedOn, setFocusedOn] = useState("research");
+  const [focusedOn] = useState("research");
   const [chatMode, setChatMode] = useState("chat");
   const [selectedLlm, setSelectedLlm] = useState("claude-sonnet-4-20250514");
   const [knowledge, setKnowledge] = useState("all");
   
-  // Settings collapsed state
-  const [settingsCollapsed, setSettingsCollapsed] = useState(false);
+  // Vertical toolbar flyout: which panel is open (null = all closed)
+  const [toolbarFlyout, setToolbarFlyout] = useState<"settings" | "sessions" | "mode" | "knowledge" | null>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const toolbarBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   
   // Header display mode: 0 = header visible + titlebar hidden,
   //                      1 = header minimal (transparent, only menu+dots),
@@ -1000,6 +885,9 @@ export default function Dashboard() {
 
   // Dedup ref to prevent double AI message insertion
   const lastResponseRef = useRef<string>('');
+
+  // Guard: initial load must finish before reloadSessions can run
+  const initDoneRef = useRef(false);
 
   // ── Voice mode audio playback (progressive blob rebuild) ──
   // Play after FIRST_PLAY_CHUNKS arrive; when that partial audio ends (or
@@ -1327,8 +1215,8 @@ export default function Dashboard() {
         question: typeof q === 'string' ? q : (q.question || ''),
         type: (q.options && q.options.length > 0) ? "choice" as const : "text" as const,
         options: q.options?.map((opt: any) => ({
-          label: typeof opt === 'string' ? opt : opt.label,
-          value: typeof opt === 'string' ? opt : opt.value,
+          label: typeof opt === 'string' ? opt : (opt.label || opt.value || opt.id || String(opt)),
+          value: typeof opt === 'string' ? opt : (opt.value || opt.id || opt.label || String(opt)),
         })),
       }));
       setHitlQuestions(mapped);
@@ -1350,24 +1238,6 @@ export default function Dashboard() {
   const currentSession = sessions.find(s => s.id === currentSessionId) || sessions[0] || null;
 
   // Dropdown options
-  const focusOptions: DropdownOption[] = [
-    { value: "research", label: "Research" },
-    { value: "development", label: "Development" },
-    { value: "analysis", label: "Analysis" },
-    { value: "documentation", label: "Documentation" },
-    { value: "troubleshooting", label: "Troubleshooting" },
-  ];
-
-  const modeOptions: DropdownOption[] = [
-    { value: "chat", label: "Chat" },
-    { value: "voice", label: "Voice" },
-    { value: "code", label: "Code" },
-    { value: "agent", label: "Agent" },
-  ];
-  // Note: These values are sent as interaction_mode to the agent API.
-  // The agent uses interaction_mode to adjust response style:
-  //   "chat" = normal, "agent" = concise, "voice" = short/spoken, "code" = code-focused
-
   const llmOptions: DropdownOption[] = [
     { value: "gpt-4o", label: "GPT-4o" },
     { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
@@ -1446,10 +1316,6 @@ export default function Dashboard() {
     setPendingFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleChangeAgent = () => {
-    console.log("Change agent clicked");
-  };
-
   // Stop the AI from thinking
   const handleStopThinking = () => {
     setIsLoading(false);
@@ -1459,9 +1325,29 @@ export default function Dashboard() {
     setCurrentTypingText("");
   };
 
-  const toggleSettings = () => {
-    setSettingsCollapsed(prev => !prev);
+  // Toggle a toolbar flyout (only one open at a time)
+  const toggleFlyout = (panel: "settings" | "sessions" | "mode" | "knowledge") => {
+    setToolbarFlyout(prev => prev === panel ? null : panel);
   };
+
+  const flyoutTop = (panel: string): number => {
+    const btn = toolbarBtnRefs.current[panel];
+    const container = toolbarRef.current;
+    if (!btn || !container) return 8;
+    return btn.offsetTop;
+  };
+
+  // Close flyout on click outside toolbar
+  useEffect(() => {
+    if (!toolbarFlyout) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
+        setToolbarFlyout(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [toolbarFlyout]);
 
   const handleNewChat = async () => {
     const newSessionId = crypto.randomUUID();
@@ -1504,13 +1390,12 @@ export default function Dashboard() {
     setCodeLanguage("");
   };
 
-  const handleSelectSession = (sessionId: string) => {
+  const handleSelectSession = async (sessionId: string) => {
+    console.log("[SelectSession] Selecting:", sessionId);
     setCurrentSessionId(sessionId);
-    const session = sessions.find(s => s.id === sessionId);
-    setChatStarted((session?.messages.length || 0) > 0);
     setLeftPanelMessages([]);
     setCurrentTypingText("");
-    
+
     // Clear Timeline, HITL and Suggestions when switching sessions
     setEventRuns({}); setActiveRunId(null);
     setHitlQuestions([]);
@@ -1520,6 +1405,42 @@ export default function Dashboard() {
     setSuggestions([]);
     setCodeContent("");
     setCodeLanguage("");
+
+    // Lazy-load messages if this session hasn't been loaded yet
+    const session = sessions.find(s => s.id === sessionId);
+    console.log("[SelectSession] Found session:", session?.title, "messages:", session?.messages?.length);
+
+    if (session && session.messages.length === 0) {
+      console.log("[SelectSession] Lazy loading messages for:", sessionId);
+      const { data, error } = await supabase
+        .schema("chat")
+        .from("messages")
+        .select("id, sender, content, pasted_contents, created_at")
+        .eq("session_id", sessionId)
+        .order("created_at", { ascending: true });
+
+      console.log("[SelectSession] Messages result — data:", data?.length, "error:", error);
+
+      if (data && data.length > 0) {
+        const msgs: Message[] = data.map((m: any) => ({
+          id: m.id,
+          text: m.content,
+          sender: m.sender as "user" | "ai",
+          createdAt: m.created_at,
+          pastedContents: m.pasted_contents && m.pasted_contents.length > 0
+            ? m.pasted_contents
+            : undefined,
+        }));
+        setSessions(prev => prev.map(s =>
+          s.id === sessionId ? { ...s, messages: msgs } : s
+        ));
+        setChatStarted(true);
+      } else {
+        setChatStarted(false);
+      }
+    } else {
+      setChatStarted((session?.messages.length || 0) > 0);
+    }
   };
 
   useEffect(() => {
@@ -1589,64 +1510,75 @@ export default function Dashboard() {
         const { data: sessionsData, error: sessionsErr } = await supabase
           .schema("chat")
           .from("sessions")
-          .select("id, title, status, focused_on, chat_mode, llm_model, knowledge, message_count, tokens_used, created_at, updated_at")
+          .select("id, title, status, focused_on, chat_mode, llm_model, knowledge, message_count, created_at, updated_at")
           .eq("auth_user_id", user.id)
           .eq("team_id", profile.teamId)
           .eq("status", "active")
+          .neq("chat_mode", "analysis")
+          .neq("chat_mode", "practice")
+          .neq("chat_mode", "automation")
           .order("created_at", { ascending: false });
 
         if (sessionsErr) console.error("[Init] Sessions load error:", sessionsErr);
 
         if (alive && sessionsData && sessionsData.length > 0) {
-          // Load messages for each session
-          const loadedSessions: Session[] = [];
-          
-          for (const s of sessionsData) {
-            const { data: messagesData } = await supabase
-              .schema("chat")
-              .from("messages")
-              .select("id, sender, content, tokens_total, pasted_contents, created_at")
-              .eq("session_id", s.id)
-              .order("created_at", { ascending: true });
+          // Check if we should open a specific session (from Chat History page)
+          let targetSessionId: string | null = null;
+          try {
+            targetSessionId = sessionStorage.getItem("sentinela.continueSessionId");
+            console.log("[Init] Raw sessionStorage value:", targetSessionId);
+            if (targetSessionId) sessionStorage.removeItem("sentinela.continueSessionId");
+          } catch {}
 
-            const messages: Message[] = (messagesData || []).map((m: any) => ({
-              id: m.id,
-              text: m.content,
-              sender: m.sender as "user" | "ai",
-              createdAt: m.created_at,
-              pastedContents: m.pasted_contents && m.pasted_contents.length > 0
-                ? m.pasted_contents
-                : undefined,
-            }));
+          const activeId = targetSessionId && sessionsData.find((s: any) => s.id === targetSessionId)
+            ? targetSessionId
+            : sessionsData[0].id;
 
-            loadedSessions.push({
-              id: s.id,
-              title: s.title,
-              createdAt: s.created_at,
-              messages,
-            });
-          }
+          console.log("[Init] Sessions loaded:", sessionsData.length, "activeId:", activeId, "target:", targetSessionId);
+
+          // Build sessions with empty messages (messages lazy-loaded on session select)
+          const loadedSessions: Session[] = sessionsData.map((s: any) => ({
+            id: s.id,
+            title: s.title,
+            createdAt: s.created_at,
+            messages: [] as Message[],
+          }));
 
           if (alive) {
             setSessions(loadedSessions);
+            setCurrentSessionId(activeId);
 
-            // Check if we should open a specific session (from Chat History page)
-            let targetSessionId: string | null = null;
-            try {
-              targetSessionId = sessionStorage.getItem("sentinela.continueSessionId");
-              sessionStorage.removeItem("sentinela.continueSessionId");
-            } catch {}
+            // If navigating from History with a target session, load its messages
+            if (targetSessionId && activeId === targetSessionId) {
+              const { data: msgData } = await supabase
+                .schema("chat")
+                .from("messages")
+                .select("id, sender, content, pasted_contents, created_at")
+                .eq("session_id", targetSessionId)
+                .order("created_at", { ascending: true });
 
-            const targetSession = targetSessionId
-              ? loadedSessions.find(s => s.id === targetSessionId)
-              : null;
-
-            if (targetSession) {
-              setCurrentSessionId(targetSession.id);
-              setChatStarted(targetSession.messages.length > 0);
+              if (alive && msgData && msgData.length > 0) {
+                const msgs: Message[] = msgData.map((m: any) => ({
+                  id: m.id,
+                  text: m.content,
+                  sender: m.sender as "user" | "ai",
+                  createdAt: m.created_at,
+                  pastedContents: m.pasted_contents && m.pasted_contents.length > 0
+                    ? m.pasted_contents
+                    : undefined,
+                }));
+                setSessions(prev => prev.map(s =>
+                  s.id === targetSessionId ? { ...s, messages: msgs } : s
+                ));
+                setChatStarted(true);
+                console.log("[Init] Loaded target session from History:", targetSessionId, "messages:", msgs.length);
+              } else {
+                setChatStarted(false);
+                console.log("[Init] Target session from History had no messages:", targetSessionId);
+              }
             } else {
-              setCurrentSessionId(loadedSessions[0].id);
-              setChatStarted(loadedSessions[0].messages.length > 0);
+              setChatStarted(false);
+              console.log("[Init] Set active session:", activeId, "chatStarted: false (welcome screen)");
             }
           }
         } else if (alive) {
@@ -1654,7 +1586,8 @@ export default function Dashboard() {
           let targetSessionId: string | null = null;
           try {
             targetSessionId = sessionStorage.getItem("sentinela.continueSessionId");
-            sessionStorage.removeItem("sentinela.continueSessionId");
+            console.log("[Init] No sessions found, fallback sessionStorage:", targetSessionId);
+            if (targetSessionId) sessionStorage.removeItem("sentinela.continueSessionId");
           } catch {}
 
           const firstId = targetSessionId || crypto.randomUUID();
@@ -1700,6 +1633,9 @@ export default function Dashboard() {
 
       } catch {
         if (alive) setUserLoadError("Error loading profile");
+      } finally {
+        initDoneRef.current = true;
+        console.log("[Init] loadUser done, initDoneRef = true");
       }
     };
 
@@ -1710,14 +1646,25 @@ export default function Dashboard() {
   }, []);
 
   // ── Reload sessions when navigating back to Dashboard (e.g., from History) ──
+  // sessionStorage is handled exclusively by loadUser (Init). This effect only
+  // refreshes the session list and lazy-loads messages for the current session.
   useEffect(() => {
     if (!userId || !teamId) return;
+    // Wait for initial load to finish to avoid race condition
+    if (!initDoneRef.current) {
+      console.log("[Reload] Skipped — init not done yet");
+      return;
+    }
 
     const reloadSessions = async () => {
+      // Check if History set a target session (loadUser may not have run again)
       let targetSessionId: string | null = null;
       try {
         targetSessionId = sessionStorage.getItem("sentinela.continueSessionId");
-        sessionStorage.removeItem("sentinela.continueSessionId");
+        if (targetSessionId) {
+          sessionStorage.removeItem("sentinela.continueSessionId");
+          console.log("[Reload] Found continueSessionId:", targetSessionId);
+        }
       } catch {}
 
       const { data: sessionsData } = await supabase
@@ -1727,41 +1674,63 @@ export default function Dashboard() {
         .eq("auth_user_id", userId)
         .eq("team_id", teamId)
         .eq("status", "active")
+        .neq("chat_mode", "analysis")
+        .neq("chat_mode", "practice")
+        .neq("chat_mode", "automation")
         .order("created_at", { ascending: false });
 
-      if (sessionsData && sessionsData.length > 0) {
-        const loadedSessions: Session[] = [];
-        for (const s of sessionsData) {
-          const { data: messagesData } = await supabase
-            .schema("chat")
-            .from("messages")
-            .select("id, sender, content, tokens_total, pasted_contents, created_at")
-            .eq("session_id", s.id)
-            .order("created_at", { ascending: true });
+      if (!sessionsData || sessionsData.length === 0) return;
 
-          loadedSessions.push({
-            id: s.id,
-            title: s.title,
-            createdAt: s.created_at,
-            messages: (messagesData || []).map((m: any) => ({
-              id: m.id,
-              text: m.content,
-              sender: m.sender as "user" | "ai",
-              createdAt: m.created_at,
-              pastedContents: m.pasted_contents?.length > 0 ? m.pasted_contents : undefined,
-            })),
-          });
+      // Determine which session to show: target from History > current > first
+      const activeId = targetSessionId && sessionsData.find((s: any) => s.id === targetSessionId)
+        ? targetSessionId
+        : (currentSessionId && sessionsData.find((s: any) => s.id === currentSessionId))
+          ? currentSessionId
+          : sessionsData[0].id;
+
+      console.log("[Reload] Sessions:", sessionsData.length, "activeId:", activeId, "target:", targetSessionId);
+
+      // Build sessions with empty messages (messages lazy-loaded on session select)
+      const loadedSessions: Session[] = sessionsData.map((s: any) => ({
+        id: s.id,
+        title: s.title,
+        createdAt: s.created_at,
+        messages: [] as Message[],
+      }));
+
+      setSessions(loadedSessions);
+      setCurrentSessionId(activeId);
+
+      // If navigating from History with a target session, load its messages
+      if (targetSessionId && activeId === targetSessionId) {
+        const { data: msgData } = await supabase
+          .schema("chat")
+          .from("messages")
+          .select("id, sender, content, pasted_contents, created_at")
+          .eq("session_id", targetSessionId)
+          .order("created_at", { ascending: true });
+
+        if (msgData && msgData.length > 0) {
+          const msgs: Message[] = msgData.map((m: any) => ({
+            id: m.id,
+            text: m.content,
+            sender: m.sender as "user" | "ai",
+            createdAt: m.created_at,
+            pastedContents: m.pasted_contents && m.pasted_contents.length > 0
+              ? m.pasted_contents
+              : undefined,
+          }));
+          setSessions(prev => prev.map(s =>
+            s.id === targetSessionId ? { ...s, messages: msgs } : s
+          ));
+          setChatStarted(true);
+          console.log("[Reload] Loaded target session from History:", targetSessionId, "messages:", msgs.length);
+        } else {
+          setChatStarted(false);
+          console.log("[Reload] Target session from History had no messages:", targetSessionId);
         }
-
-        setSessions(loadedSessions);
-
-        if (targetSessionId) {
-          const target = loadedSessions.find(s => s.id === targetSessionId);
-          if (target) {
-            setCurrentSessionId(target.id);
-            setChatStarted(target.messages.length > 0);
-          }
-        }
+      } else {
+        setChatStarted(false);
       }
     };
 
@@ -1997,61 +1966,282 @@ export default function Dashboard() {
   };
 
   const getGreeting = () => {
-    const hour = new Date().getHours();
+    const now = new Date();
+    const hour = now.getHours();
+    const day = now.getDay();
+
+    // Entries with {name} will include the user's name; entries without won't.
+    const GREETINGS: Record<number, { morning: string[]; afternoon: string[]; night: string[] }> = {
+      0: { // Sunday
+        morning: [
+          "Soft Sunday morning",
+          "Sunday reset, {name}",
+          "Slow start, clear mind",
+          "Quiet Sunday energy",
+          "Recharge mode: ON",
+          "Coffee + calm, {name}",
+          "Gentle Sunday rhythm",
+          "No rush today",
+        ],
+        afternoon: [
+          "Sunday afternoon drift",
+          "Easy pace, {name}",
+          "Reset + reflect",
+          "Last calm stretch",
+          "Slowly shifting gears",
+          "Sunday planning without pressure",
+          "One foot in the week",
+          "Low-stress Sunday vibes",
+        ],
+        night: [
+          "Sunday night reset",
+          "Week prep mode",
+          "Tomorrow starts loading…",
+          "Soft landing, {name}",
+          "Quiet wrap-up",
+          "Final breath before Monday",
+          "Set it up, then shut it down",
+          "Lights low, mind clear",
+        ],
+      },
     
-    const morningGreetings = [
-      "Good morning",
-      "Rise and shine",
-      "Morning",
-      "Ready to start",
-      "Fresh start",
-      "New day ahead",
+      1: { // Monday
+        morning: [
+          "Monday kickoff",
+          "New week, new moves",
+          "Monday momentum, {name}",
+          "Fresh start energy",
+          "Week: initialized",
+          "Start clean, stay steady",
+          "First sprint, calm pace",
+          "Let’s set the tone",
+        ],
+        afternoon: [
+          "Monday in progress",
+          "Steady Monday grind",
+          "Momentum building, {name}",
+          "Keep it moving",
+          "Day-one calibration",
+          "Hold the pace",
+          "Small wins count today",
+          "Still early in the week",
+        ],
+        night: [
+          "Monday: closed out",
+          "First checkpoint cleared, {name}",
+          "Good work—log it and rest",
+          "Day one done",
+          "Strong start, {name}",
+          "Shut down the tabs (mentally too)",
+          "Recharge for Tuesday",
+          "You survived Monday",
+        ],
+      },
+    
+      2: { // Tuesday
+        morning: [
+          "Tuesday traction",
+          "Round two, {name}",
+          "Better than yesterday",
+          "Tuesday focus unlocked",
+          "Let’s build consistency",
+          "Quiet productive energy",
+          "Second-day momentum",
+          "Warm start, strong finish",
+        ],
+        afternoon: [
+          "Tuesday in rhythm",
+          "Locked in, {name}",
+          "Steady progress",
+          "Flow maintained",
+          "Solid pace today",
+          "No chaos, just work",
+          "Keep stacking wins",
+          "Tuesday: clean execution",
+        ],
+        night: [
+          "Tuesday secured",
+          "Another block complete, {name}",
+          "Consistency > intensity",
+          "Ready for midweek",
+          "Good work—call it",
+          "Close the day gently",
+          "Done is done",
+          "Tuesday wrapped",
+        ],
+      },
+    
+      3: { // Wednesday
+        morning: [
+          "Midweek morning",
+          "Halfway there, {name}",
+          "Wednesday balance",
+          "Midpoint energy",
+          "Center of the week",
+          "Steady hands today",
+          "Keep it clean and calm",
+          "Hold the line",
+        ],
+        afternoon: [
+          "Over the hump",
+          "Midweek momentum, {name}",
+          "Stable pace",
+          "Controlled progress",
+          "You’re past the midpoint",
+          "Keep the engine smooth",
+          "Wednesday: still strong",
+          "Stay consistent",
+        ],
+        night: [
+          "Midweek: cleared",
+          "Momentum intact, {name}",
+          "Thursday is close",
+          "Good pace this week",
+          "Close it out clean",
+          "Midweek resolved",
+          "Rest earned",
+          "Wednesday logged",
+        ],
+      },
+    
+      4: { // Thursday
+        morning: [
+          "Thursday push",
+          "Almost Friday, {name}",
+          "Precision day",
+          "Last stretch energy",
+          "Thursday focus mode",
+          "Clean execution today",
+          "Nearing the summit",
+          "Keep it tight",
+        ],
+        afternoon: [
+          "Thursday momentum",
+          "Final adjustments, {name}",
+          "Closing distance",
+          "Lock it in",
+          "Pre-Friday pace",
+          "Tie up the loose ends",
+          "One day closer",
+          "Keep it moving",
+        ],
+        night: [
+          "Thursday: sealed",
+          "Friday loading…",
+          "Set tomorrow up, {name}",
+          "One step away",
+          "Good positioning",
+          "Close it down gently",
+          "Almost there",
+          "Endgame vibes",
+        ],
+      },
+    
+      5: { // Friday
+        morning: [
+          "Friday unlocked",
+          "Finally Friday, {name}",
+          "Last push",
+          "Finish strong",
+          "Energy shift day",
+          "Close the week clean",
+          "Friday focus (then freedom)",
+          "Let’s land this",
+        ],
+        afternoon: [
+          "Friday glide mode",
+          "Wrapping it up, {name}",
+          "Almost free",
+          "Countdown active",
+          "Close loops, then chill",
+          "Final emails, final tasks",
+          "You’re basically there",
+          "Soft landing into weekend",
+        ],
+        night: [
+          "Weekend mode: ON",
+          "Week complete, {name}",
+          "Mission accomplished",
+          "Friday night reset",
+          "No more deadlines today",
+          "Shut it down",
+          "You made it",
+          "Rest starts now",
+        ],
+      },
+    
+      6: { // Saturday
+        morning: [
+          "Saturday slow start",
+          "Weekend air, {name}",
+          "No alarms energy",
+          "Easy morning",
+          "Soft Saturday",
+          "Take it light",
+          "Breathing space",
+          "Slow coffee, zero rush",
+        ],
+        afternoon: [
+          "Saturday flow",
+          "Zero pressure",
+          "Time expands",
+          "Easy pace, {name}",
+          "Off the grid vibes",
+          "Do less, feel better",
+          "Weekend rhythm",
+          "Keep it simple",
+        ],
+        night: [
+          "Saturday night mode",
+          "Fully offline, {name}",
+          "Quiet fun / quiet rest",
+          "No deadlines allowed",
+          "Soft reset",
+          "Late-night chill",
+          "End the day gently",
+          "Weekend continues",
+        ],
+      },
+    };
+    
+    const GLOBAL_LATE_NIGHT = [
+      "Late focus, {name}",
+      "Quiet grind",
+      "Night session",
+      "Deep work hours",
+      "After-dark flow",
+      "Low noise, high focus",
+      "Midnight oil mode",
+      "One more clean block",
     ];
     
-    const afternoonGreetings = [
-      "Good afternoon",
-      "Hey there",
-      "How's it going",
-      "Keep it up",
-      "Afternoon",
-      "Still going strong",
+    const GLOBAL_EARLY_MORNING = [
+      "Up before the world",
+      "Early advantage, {name}",
+      "Quiet power hour",
+      "First light focus",
+      "Ahead of schedule",
+      "Calm before the noise",
+      "Early momentum",
+      "Soft start, sharp mind",
     ];
-    
-    const eveningGreetings = [
-      "Good evening",
-      "Evening",
-      "Winding down",
-      "Almost there",
-      "End of day",
-    ];
-    
-    const nightGreetings = [
-      "Working late",
-      "Night owl",
-      "Burning midnight oil",
-      "Late night session",
-      "Still at it",
-      "Quiet hours",
-    ];
-    
-    let greetings: string[];
-    
-    if (hour >= 5 && hour < 12) {
-      greetings = morningGreetings;
+    let pool: string[];
+
+    if (hour >= 0 && hour < 4) {
+      pool = GLOBAL_LATE_NIGHT;
+    } else if (hour >= 4 && hour < 7) {
+      pool = GLOBAL_EARLY_MORNING;
+    } else if (hour >= 7 && hour < 12) {
+      pool = GREETINGS[day].morning;
     } else if (hour >= 12 && hour < 18) {
-      greetings = afternoonGreetings;
-    } else if (hour >= 18 && hour < 22) {
-      greetings = eveningGreetings;
+      pool = GREETINGS[day].afternoon;
     } else {
-      greetings = nightGreetings;
+      pool = GREETINGS[day].night;
     }
-    
-    // Use a seed based on the day so it stays consistent during the session
-    const today = new Date().toDateString();
-    const seed = today.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const index = seed % greetings.length;
-    
-    return greetings[index];
+
+    // Seed based on date string so it's consistent all day
+    const seed = now.toDateString().split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    return pool[seed % pool.length];
   };
 
   const displayName = (userName || "").trim() || "User";
@@ -2244,7 +2434,7 @@ export default function Dashboard() {
       mediaType: img.mediaType,
       base64: img.dataUrl.replace(/^data:[^;]+;base64,/, ''),
     }));
-    sendToAgent(fullMessage, chatImages.length > 0 ? chatImages : undefined);
+    sendToAgent(fullMessage, chatImages.length > 0 ? { images: chatImages } : undefined);
   };
   
   // generateAIResponse removed - handled by SSE onResponse callback
@@ -2268,7 +2458,7 @@ export default function Dashboard() {
     // Format answers for the agent
     const answers = hitlQuestions.map(q => ({
       question: q.question,
-      answer: hitlAnswers[q.id] || "Not answered",
+      answer: hitlAnswers[q.id] ?? "Not answered",
     }));
 
     // Send confirmation to real agent via SSE
@@ -2320,86 +2510,11 @@ export default function Dashboard() {
         currentPage="Home"
         credits={remainingTokens}
         maxCredits={totalTokens}
-        onChangeAgent={handleChangeAgent}
         titleBarVisible={headerMode === 2}
         headerMinimal={headerMode === 1}
-        onToggleTitleBar={() => setHeaderMode(prev => ((prev + 1) % 3) as 0 | 1 | 2)}
+        onToggleTitleBar={() => setHeaderMode(prev => (prev === 0 ? 1 : 0))}
       />
 
-      {/* Title bar with Settings, Session Selector, and New Chat button */}
-      {headerMode === 2 && <div className="dash_titleBar">
-        <div className="dash_titleLeft">
-          <div className="dash_titleGroup">
-            <div className="dash_titleText">
-              <h2 className="dash_pageTitle">Research Hub</h2>
-              <p className="dash_pageSubtitle">Powered by Sentinela AI</p>
-            </div>
-            <button 
-              type="button" 
-              className={`dash_settingsBtn ${settingsCollapsed ? "is-active" : ""}`}
-              onClick={toggleSettings}
-              aria-label="Toggle settings"
-            >
-              <SettingsIcon />
-            </button>
-          </div>
-          
-          {/* Session Selector - always visible */}
-          <SessionSelector
-            sessions={sessions}
-            currentSessionId={currentSessionId}
-            onSelectSession={handleSelectSession}
-            onViewAll={() => navigate("/chat")}
-          />
-          
-          {/* Settings row - collapsible */}
-          {!settingsCollapsed && (
-            <>
-              <div className="dash_titleDivider" />
-              
-              <div className="dash_settingsRow">
-                <DropdownSelect
-                  label="Focused On"
-                  value={focusedOn}
-                  options={focusOptions}
-                  onChange={setFocusedOn}
-                />
-                
-                <div className={isLoading ? "dash_dropdownDisabled" : ""}>
-                  <DropdownSelect
-                    label="Mode"
-                    value={chatMode}
-                    options={modeOptions}
-                    onChange={isLoading ? () => {} : setChatMode}
-                  />
-                </div>
-                
-                <DropdownSelect
-                  label="LLM"
-                  value={selectedLlm}
-                  options={llmOptions}
-                  onChange={setSelectedLlm}
-                />
-                
-                <DropdownSelect
-                  label="Knowledge"
-                  value={knowledge}
-                  options={knowledgeOptions}
-                  onChange={setKnowledge}
-                />
-              </div>
-            </>
-          )}
-        </div>
-        
-        <div className="dash_titleRight">
-          <button type="button" className="dash_newChatBtn" onClick={handleNewChat}>
-            New chat
-            <Plus size={16} />
-          </button>
-        </div>
-      </div>}
-      
       <main className={`dash_content dash_content--${chatMode}`}>
         {/* Left black panel - hidden in chat mode */}
         {chatMode !== "chat" && (
@@ -2543,7 +2658,8 @@ export default function Dashboard() {
                 </div>
                 <div className="dash_welcomeTextBlock">
                   <div className="dash_welcomeLabel">{displayName}'s Workspace</div>
-                  <h1 className="dash_welcomeGreeting dash_shineText">{getGreeting()}, {displayName}</h1>
+                  <p className="dash_welcomeSubLabel">A research bitácora by {displayName}</p>
+                  <h1 className="dash_welcomeGreeting dash_shineText">{getGreeting().replace("{name}", displayName)}</h1>
                   <div className="dash_welcomeStats">
                     <div className="dash_statsLine" />
                     <div className="dash_statsList">
@@ -2567,7 +2683,7 @@ export default function Dashboard() {
           {/* Small workspace label when chat has messages (hidden in minimal header mode) */}
           {headerMode !== 1 && chatStarted && currentSession && currentSession.messages.length > 0 && (
             <div className="dash_rightHeaderCompact">
-              <span className="dash_rightLabel">{displayName}'s Workspace</span>
+              <span className="dash_rightLabel">{displayName}'s Bitácora</span>
             </div>
           )}
 
@@ -2657,8 +2773,9 @@ export default function Dashboard() {
             </div>
           )}
 
-          <div className="dash_chatWrapper">
-            <ChatInput 
+          <div className={`dash_chatWrapper ${!chatStarted ? 'dash_chatWrapper--welcome' : ''}`}>
+            <div className="dash_chatAboveBox" />
+            <ChatInput
               value={chatMessage}
               onChange={setChatMessage}
               onSubmit={handleSendMessage}
@@ -2670,14 +2787,224 @@ export default function Dashboard() {
               onAttachClick={handleAttachClick}
               onRemoveFile={handleRemoveFile}
             />
-            <input 
-              ref={fileInputRef} 
-              type="file" 
-              multiple 
-              className="dash_hiddenInput" 
-              onChange={handleFilesSelected} 
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="dash_hiddenInput"
+              onChange={handleFilesSelected}
             />
+            <p className="dash_chatDisclaimer">
+            ORION operates real equipment — verify all movements before execution.AI-generated responses may contain errors.
+            </p>
           </div>
+        </div>
+
+        {/* ── Vertical Toolbar (right edge) ── */}
+        <div className="dash_toolbar" ref={toolbarRef}>
+          <div className="dash_toolbarIcons">
+            {/* New Chat */}
+            <button
+              type="button"
+              className="dash_toolbarBtn"
+              onClick={handleNewChat}
+              aria-label="New chat"
+              title="New chat"
+            >
+              <Plus size={20} />
+            </button>
+
+            <div className="dash_toolbarSep" />
+
+            {/* Settings / Config (LLM + Knowledge) */}
+            <button
+              ref={el => { toolbarBtnRefs.current["settings"] = el; }}
+              type="button"
+              className={`dash_toolbarBtn ${toolbarFlyout === "settings" ? "is-active" : ""}`}
+              onClick={() => toggleFlyout("settings")}
+              aria-label="Settings"
+              title="Settings"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+
+            {/* Sessions */}
+            <button
+              ref={el => { toolbarBtnRefs.current["sessions"] = el; }}
+              type="button"
+              className={`dash_toolbarBtn ${toolbarFlyout === "sessions" ? "is-active" : ""}`}
+              onClick={() => toggleFlyout("sessions")}
+              aria-label="Sessions"
+              title="Sessions"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </button>
+
+            {/* Interaction Mode — icon changes based on active mode */}
+            <button
+              ref={el => { toolbarBtnRefs.current["mode"] = el; }}
+              type="button"
+              className={`dash_toolbarBtn ${toolbarFlyout === "mode" ? "is-active" : ""}`}
+              onClick={() => !isLoading && toggleFlyout("mode")}
+              aria-label="Interaction mode"
+              title={`Mode: ${chatMode}`}
+              disabled={isLoading}
+            >
+              {chatMode === "chat" && (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>
+                </svg>
+              )}
+              {chatMode === "voice" && (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" x2="12" y1="19" y2="22"/>
+                </svg>
+              )}
+              {chatMode === "agent" && (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+                </svg>
+              )}
+              {chatMode === "code" && (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="16 18 22 12 16 6"/>
+                  <polyline points="8 6 2 12 8 18"/>
+                </svg>
+              )}
+            </button>
+
+            <div className="dash_toolbarSep" />
+
+            {/* Knowledge */}
+            <button
+              ref={el => { toolbarBtnRefs.current["knowledge"] = el; }}
+              type="button"
+              className={`dash_toolbarBtn ${toolbarFlyout === "knowledge" ? "is-active" : ""}`}
+              onClick={() => toggleFlyout("knowledge")}
+              aria-label="Knowledge"
+              title="Knowledge"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+              </svg>
+            </button>
+          </div>
+
+          {/* ── Flyout Popovers ── */}
+
+          {/* Settings Flyout (LLM + Knowledge selectors) */}
+          {toolbarFlyout === "settings" && (
+            <div className="dash_flyout" style={{ top: flyoutTop("settings") }}>
+              <div className="dash_flyoutSection">
+                <span className="dash_flyoutLabel">LLM Model</span>
+                {llmOptions.map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`dash_flyoutItem ${opt.value === selectedLlm ? "is-selected" : ""}`}
+                    onClick={() => { setSelectedLlm(opt.value); }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    </svg>
+                    <span>{opt.label}</span>
+                    {opt.value === selectedLlm && <Check size={14} className="dash_flyoutCheck" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sessions Flyout */}
+          {toolbarFlyout === "sessions" && (
+            <div className="dash_flyout" style={{ top: flyoutTop("sessions") }}>
+              <div className="dash_flyoutSection">
+                <span className="dash_flyoutLabel">Sessions</span>
+                {sessions.slice(0, 3).map(session => (
+                  <button
+                    key={session.id}
+                    type="button"
+                    className={`dash_flyoutItem ${session.id === currentSessionId ? "is-selected" : ""}`}
+                    onClick={() => { handleSelectSession(session.id); setToolbarFlyout(null); }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    <span>{session.title}</span>
+                    {session.id === currentSessionId && <Check size={14} className="dash_flyoutCheck" />}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="dash_flyoutItem dash_flyoutItem--action"
+                  onClick={() => { setToolbarFlyout(null); navigate("/chat"); }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+                  </svg>
+                  <span>View all</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Mode Flyout */}
+          {toolbarFlyout === "mode" && (
+            <div className="dash_flyout" style={{ top: flyoutTop("mode") }}>
+              <div className="dash_flyoutSection">
+                <span className="dash_flyoutLabel">Interaction Mode</span>
+                {[
+                  { value: "chat", label: "Chat", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg> },
+                  { value: "voice", label: "Voice", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg> },
+                  { value: "agent", label: "Agent", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg> },
+                  { value: "code", label: "Code", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> },
+                ].map(m => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    className={`dash_flyoutItem ${m.value === chatMode ? "is-selected" : ""}`}
+                    onClick={() => { setChatMode(m.value); }}
+                  >
+                    {m.icon}
+                    <span>{m.label}</span>
+                    {m.value === chatMode && <Check size={14} className="dash_flyoutCheck" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Knowledge Flyout */}
+          {toolbarFlyout === "knowledge" && (
+            <div className="dash_flyout" style={{ top: flyoutTop("knowledge") }}>
+              <div className="dash_flyoutSection">
+                <span className="dash_flyoutLabel">Knowledge Base</span>
+                {knowledgeOptions.map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    className={`dash_flyoutItem ${opt.value === knowledge ? "is-selected" : ""}`}
+                    onClick={() => { setKnowledge(opt.value); }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                    </svg>
+                    <span>{opt.label}</span>
+                    {opt.value === knowledge && <Check size={14} className="dash_flyoutCheck" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>

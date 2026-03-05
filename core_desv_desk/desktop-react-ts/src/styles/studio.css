@@ -1,0 +1,652 @@
+/* ============================================================================
+   STUDIO — Audiobooks dashboard
+   ============================================================================ */
+
+.studio__inner {
+  max-width: 1100px;
+  width: 88%;
+  margin: 0 auto;
+  padding: 90px 0 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── 1. Top bar ── */
+
+.studio__topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.studio__title {
+  font-family: var(--font-display, 'Neue Machina', system-ui, sans-serif);
+  font-size: 22px;
+  font-weight: 500;
+  color: #101113;
+  margin: 0;
+}
+
+.studio__topActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.studio__userBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #6b7280;
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease;
+}
+
+.studio__userBtn:hover {
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+/* Chip dropdown wrapper */
+.studio__chipDropdown {
+  position: relative;
+}
+
+.studio__chipMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  padding: 4px;
+  z-index: 50;
+  animation: studioChipFadeIn 150ms ease;
+}
+
+@keyframes studioChipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.studio__chipMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 450;
+  color: #1f2937;
+  background: none;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.studio__chipMenuItem:hover {
+  background: #f3f4f6;
+}
+
+.studio__createBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  background: #111214;
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.studio__createBtn:hover {
+  background: #2a2c30;
+}
+
+/* ── 2. Action cards ── */
+
+.studio__actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.studio__actionCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #ebebef;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 150ms ease;
+}
+
+.studio__actionCard:hover {
+  border-color: #d1d5db;
+}
+
+.studio__actionIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+}
+
+.studio__actionIcon--purple {
+  background: #374151;
+}
+
+.studio__actionIcon--red {
+  background: #1f2937;
+}
+
+.studio__actionText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.studio__actionTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111214;
+}
+
+.studio__actionSub {
+  font-size: 12.5px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+/* ── 3. Tabs ── */
+
+.studio__tabs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e5e7eb;
+  gap: 16px;
+}
+
+.studio__tabList {
+  display: flex;
+  gap: 0;
+}
+
+.studio__tab {
+  padding: 10px 16px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #9ca3af;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease;
+  margin-bottom: -1px;
+}
+
+.studio__tab:hover {
+  color: #6b7280;
+}
+
+.studio__tab.is-active {
+  color: #111214;
+  border-bottom-color: #111214;
+}
+
+.studio__tabLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  text-decoration: none;
+  padding-bottom: 10px;
+  transition: color 150ms ease;
+}
+
+.studio__tabLink:hover {
+  color: #111214;
+}
+
+/* ── 4. Search bar ── */
+
+.studio__searchRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.studio__searchInput {
+  flex: 1;
+  position: relative;
+}
+
+.studio__searchInput input {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px 0 36px;
+  font-size: 13.5px;
+  color: #111214;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.studio__searchInput input::placeholder {
+  color: #9ca3af;
+}
+
+.studio__searchInput input:focus {
+  border-color: #a5b4fc;
+  box-shadow: 0 0 0 3px rgba(165, 180, 252, 0.15);
+}
+
+.studio__searchIcon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.studio__viewToggles {
+  display: flex;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.studio__viewBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: #fff;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.studio__viewBtn + .studio__viewBtn {
+  border-left: 1px solid #e5e7eb;
+}
+
+.studio__viewBtn:hover {
+  background: #f9fafb;
+  color: #6b7280;
+}
+
+.studio__viewBtn.is-active {
+  background: #f3f4f6;
+  color: #111214;
+}
+
+/* ── 5. Filters ── */
+
+.studio__filters {
+  display: flex;
+  gap: 8px;
+}
+
+.studio__filterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  background: #fff;
+  border: 1px dashed #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease;
+}
+
+.studio__filterChip:hover {
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+/* ── 6. Book grid ── */
+
+.studio__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.studio__bookCard {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e8e8ec;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 200ms ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.studio__bookCard:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
+}
+
+/* Thumbnail area */
+.studio__bookThumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 5 / 3;
+  background: #f3f4f6;
+  overflow: hidden;
+}
+
+.studio__bookThumbImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 14px 14px 0 0;
+}
+
+/* Mini book cover preview */
+.studio__bookCover {
+  width: 60%;
+  height: 80%;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.studio__coverTitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: #111214;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.studio__coverSub {
+  font-size: 9px;
+  font-weight: 400;
+  color: #9ca3af;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Badge — bottom of thumbnail */
+.studio__bookBadge {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: #1f2937;
+  border-radius: 5px;
+  letter-spacing: 0.01em;
+}
+
+.studio__badgeDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #374151;
+  flex-shrink: 0;
+}
+
+/* Book info row */
+.studio__bookInfo {
+  padding: 12px 14px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.studio__bookIcon {
+  flex-shrink: 0;
+  color: #9ca3af;
+  margin-top: 1px;
+}
+
+.studio__bookMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.studio__bookTitle {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #111214;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.studio__bookDate {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* ── 7. Columns view ── */
+
+.studio__grid--columns {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.studio__bookCard--compact .studio__bookThumb--compact {
+  aspect-ratio: 4 / 2.2;
+}
+
+/* ── 8. List view ── */
+
+.studio__listView {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.studio__listHeader {
+  display: grid;
+  grid-template-columns: 1fr 140px 110px 72px;
+  padding: 10px 16px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.studio__listHeaderCell {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.studio__listRow {
+  display: grid;
+  grid-template-columns: 1fr 140px 110px 72px;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 120ms ease;
+  cursor: pointer;
+}
+
+.studio__listRow:last-child {
+  border-bottom: none;
+}
+
+.studio__listRow:hover {
+  background: #f9fafb;
+}
+
+.studio__listCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  color: #111214;
+  min-width: 0;
+}
+
+.studio__listCell--title span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.studio__listCell--created {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.studio__listCell--actions {
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.studio__listThumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.studio__listDocIcon {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.studio__listBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.studio__listBadge--active {
+  color: #1f2937;
+  background: #f3f4f6;
+}
+
+.studio__listBadge--draft {
+  color: #6b7280;
+  background: #f3f4f6;
+}
+
+.studio__badgeDot--draft {
+  background: #9ca3af;
+}
+
+.studio__listActionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.studio__listActionBtn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* ── 9. Empty states (tabs) ── */
+
+.studio__emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
+  text-align: center;
+}
+
+.studio__emptyIcon {
+  width: 48px;
+  height: 48px;
+  color: #d1d5db;
+  margin-bottom: 16px;
+}
+
+.studio__emptyTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111214;
+  margin: 0 0 6px;
+}
+
+.studio__emptySub {
+  font-size: 13.5px;
+  color: #9ca3af;
+  margin: 0;
+  max-width: 320px;
+  line-height: 1.5;
+}

@@ -21,12 +21,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
-  height: 44px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 0 20px;
+  height: 46px;
+  border-bottom: 1px solid rgba(16, 17, 19, 0.06);
   flex-shrink: 0;
-  background: #fafafa;
+  background: #ffffff;
   z-index: 10;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .prof_headerLeft {
@@ -42,16 +43,17 @@
 }
 
 .prof_menuBtn {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  border: none;
   background: transparent;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
   cursor: pointer;
-  color: #555;
+  color: #101113;
   transition: all 0.15s ease;
 }
 
@@ -152,13 +154,13 @@
 
 /* Header buttons */
 .prof_headerBtn {
-  padding: 6px 14px;
-  font-size: 12px;
+  padding: 7px 14px;
+  font-size: 13px;
   font-weight: 500;
-  color: #555;
+  color: rgba(16, 17, 19, 0.65);
   background: transparent;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 6px;
+  border: 1px solid rgba(16, 17, 19, 0.1);
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
   font-family: inherit;

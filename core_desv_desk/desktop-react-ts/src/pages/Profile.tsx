@@ -1,6 +1,7 @@
 // src/pages/Profile.tsx
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Menu, Plus, X, Camera, Loader2, Save, User, Mail, Building2, GraduationCap, Shield } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Menu, Camera, Loader2, Save, User, Mail, Building2, GraduationCap, Shield } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import "../styles/profile-ui.css";
 
@@ -60,15 +61,6 @@ async function loadHeaderProfile(user: any): Promise<{ name: string; role: strin
   return { name: baseName, role };
 }
 
-function AgentIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <circle cx="6" cy="9" r="5.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
-      <circle cx="12" cy="9" r="4.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
-    </svg>
-  );
-}
-
 // ============================================================================
 // HEADER
 // ============================================================================
@@ -77,18 +69,13 @@ interface ProfileHeaderProps {
   userName: string;
   userRole: string;
   userError?: string | null;
-  onChangeAgent?: () => void;
 }
 
-function ProfileHeader({ userName, userRole, userError, onChangeAgent }: ProfileHeaderProps) {
+function ProfileHeader({ userName, userRole, userError }: ProfileHeaderProps) {
+  const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem(LS_KEY) === "1"; } catch { return false; }
   });
-  const [credits] = useState(10000);
-  const maxCredits = 10000;
-  const [showCreditsModal, setShowCreditsModal] = useState(false);
-  const [emailSubject, setEmailSubject] = useState("");
-  const [emailContext, setEmailContext] = useState("");
 
   useEffect(() => {
     if (sidebarCollapsed) document.documentElement.classList.add(ROOT_COLLAPSED_CLASS);
@@ -106,13 +93,8 @@ function ProfileHeader({ userName, userRole, userError, onChangeAgent }: Profile
     });
   }, []);
 
-  const handleSendRequest = () => {
-    setEmailSubject(""); setEmailContext(""); setShowCreditsModal(false);
-  };
-
   const displayName = userName || "User";
   const displayRole = userRole || null;
-  const creditsPercentage = (credits / maxCredits) * 100;
 
   return (
     <>
@@ -134,51 +116,12 @@ function ProfileHeader({ userName, userRole, userError, onChangeAgent }: Profile
             )}
           </div>
           {userError && <span className="prof_userError">({userError})</span>}
-          <div className="prof_creditsContainer">
-            <div className="prof_creditsBar">
-              <div className="prof_creditsFill" style={{ width: `${creditsPercentage}%` }} />
-            </div>
-            <span className="prof_creditsText">{credits.toLocaleString()} Credits Left</span>
-            <button type="button" className="prof_creditsAddBtn" onClick={() => setShowCreditsModal(true)}>
-              <Plus size={14} />
-            </button>
-          </div>
         </div>
         <div className="prof_headerRight">
-          <button type="button" className="prof_changeAgentBtn" onClick={onChangeAgent}>
-            <AgentIcon /><span>Change agent</span>
-          </button>
-          <div className="prof_headerDivider" />
           <button type="button" className="prof_headerBtn">Feedback</button>
-          <button type="button" className="prof_headerBtn">Docs</button>
+          <button type="button" className="prof_headerBtn" onClick={() => navigate("/notebook")}>Notebook</button>
         </div>
       </header>
-
-      {showCreditsModal && (
-        <div className="prof_modalOverlay" onClick={() => setShowCreditsModal(false)}>
-          <div className="prof_creditsModal" onClick={(e) => e.stopPropagation()}>
-            <div className="prof_creditsModalHeader">
-              <h2>Request More Tokens</h2>
-              <button type="button" className="prof_creditsModalClose" onClick={() => setShowCreditsModal(false)}><X size={18} /></button>
-            </div>
-            <p className="prof_creditsModalDesc">Need more tokens? Send us a request.</p>
-            <div className="prof_creditsModalForm">
-              <div className="prof_creditsModalField">
-                <label htmlFor="prof-subj">Subject</label>
-                <input id="prof-subj" type="text" value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} placeholder="e.g., Additional token request" />
-              </div>
-              <div className="prof_creditsModalField">
-                <label htmlFor="prof-ctx">Context</label>
-                <textarea id="prof-ctx" value={emailContext} onChange={(e) => setEmailContext(e.target.value)} placeholder="Describe your needs..." rows={4} />
-              </div>
-              <div className="prof_creditsModalActions">
-                <button type="button" className="prof_creditsModalCancel" onClick={() => setShowCreditsModal(false)}>Cancel</button>
-                <button type="button" className="prof_creditsModalSubmit" onClick={handleSendRequest} disabled={!emailSubject.trim() || !emailContext.trim()}>Send Request</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
@@ -322,7 +265,7 @@ export default function ProfilePage() {
   // ── Render ──
   return (
     <div className="prof_root">
-      <ProfileHeader userName={userName} userRole={userRole || ""} userError={userLoadError} onChangeAgent={() => {}} />
+      <ProfileHeader userName={userName} userRole={userRole || ""} userError={userLoadError} />
 
       <main className="prof_content">
         {loading ? (

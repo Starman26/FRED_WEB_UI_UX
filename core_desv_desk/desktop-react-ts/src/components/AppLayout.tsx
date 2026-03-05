@@ -21,6 +21,7 @@ export function AppLayout() {
     path.startsWith("projects") ? "proyectos" :
     path.startsWith("chat") ? "chat" :
     path.startsWith("config") ? "widget" :
+    path.startsWith("notebook") ? "notebook" :
     path.startsWith("living") ? "living" :
     path.startsWith("profile") ? "perfil" :
     "inicio";
@@ -32,6 +33,7 @@ export function AppLayout() {
     path.startsWith("dashboard") ||
     path.startsWith("projects") ||
     path.startsWith("config") ||
+    path.startsWith("notebook") ||
     path.startsWith("living") ||
     path.startsWith("profile") ||
     path === "" ||
@@ -53,6 +55,7 @@ export function AppLayout() {
           else if (k === "living") navigate("/living");
           else if (k === "chat") navigate("/chat");
           else if (k === "widget") navigate("/config");
+          else if (k === "notebook") navigate("/notebook");
           else if (k === "perfil") navigate("/profile");
         }}
       />

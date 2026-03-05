@@ -16,6 +16,7 @@ import {
   Database,
   FileText,
   Settings,
+  MessageSquare,
 } from "lucide-react";
 
 // ============================================================================
@@ -280,9 +281,6 @@ export function FollowUpSuggestions({ suggestions, onSelect }: SuggestionsProps)
 
   return (
     <div className="dash_suggestions">
-      <div className="dash_suggestionsTitle">
-        Suggested follow-up questions
-      </div>
       <div className="dash_suggestionsList">
         {suggestions.map((suggestion) => (
           <button
@@ -291,8 +289,9 @@ export function FollowUpSuggestions({ suggestions, onSelect }: SuggestionsProps)
             className="dash_suggestionBtn"
             onClick={() => onSelect(suggestion.text)}
           >
+            <MessageSquare size={15} className="dash_suggestionIcon" />
             <span>{suggestion.text}</span>
-            <ChevronRight size={16} className="dash_suggestionArrow" />
+            <ChevronRight size={15} className="dash_suggestionArrow" />
           </button>
         ))}
       </div>
@@ -481,6 +480,247 @@ export function ChatInput({
 }
 
 // ============================================================================
+// MARKDOWN RENDERER (standalone, reusable)
+// ============================================================================
+
+function processInlineMarkdown(input: string) {
+  const parts: (string | JSX.Element)[] = [];
+  let remaining = input;
+  let k = 0;
+
+  while (remaining.length > 0) {
+    const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
+    const italicMatch = remaining.match(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/);
+    const codeMatch = remaining.match(/`([^`]+)`/);
+    const linkMatch = remaining.match(/\[([^\]]+)\]\(([^)]+)\)/);
+    const highlightMatch = remaining.match(/==([+\-~?]?)(.+?)==/);
+
+    const matches = [
+      boldMatch ? { type: "bold", match: boldMatch, index: boldMatch.index! } : null,
+      italicMatch ? { type: "italic", match: italicMatch, index: italicMatch.index! } : null,
+      codeMatch ? { type: "code", match: codeMatch, index: codeMatch.index! } : null,
+      linkMatch ? { type: "link", match: linkMatch, index: linkMatch.index! } : null,
+      highlightMatch ? { type: "highlight", match: highlightMatch, index: highlightMatch.index! } : null,
+    ].filter(Boolean).sort((a, b) => a!.index - b!.index);
+
+    if (matches.length === 0) { parts.push(remaining); break; }
+
+    const first = matches[0]!;
+    if (first.index > 0) parts.push(remaining.slice(0, first.index));
+
+    if (first.type === "bold") {
+      parts.push(<strong key={k++}>{first.match[1]}</strong>);
+    } else if (first.type === "italic") {
+      parts.push(<em key={k++}>{first.match[1]}</em>);
+    } else if (first.type === "code") {
+      parts.push(<code key={k++} className="dash_mdInlineCode">{first.match[1]}</code>);
+    } else if (first.type === "link") {
+      parts.push(
+        <a key={k++} className="dash_mdLink" href={first.match[2]} target="_blank" rel="noopener noreferrer">
+          {first.match[1]}
+        </a>
+      );
+    } else if (first.type === "highlight") {
+      parts.push(
+        <mark key={k++} className="dash_highlight">{first.match[2]}</mark>
+      );
+    }
+    remaining = remaining.slice(first.index + first.match[0].length);
+  }
+  return parts;
+}
+
+export function renderMarkdown(text: string, hideCodeBlocks = false): JSX.Element[] | null {
+  if (!text) return null;
+
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  const elements: JSX.Element[] = [];
+
+  let currentParagraph: string[] = [];
+  let inCodeBlock = false;
+  let codeContent: string[] = [];
+  let codeLanguage = "";
+
+  let listType: "ul" | "ol" | null = null;
+  // Each item: { text, subItems[] }
+  let listAccum: { text: string; subItems: string[] }[] = [];
+  let blockquoteLines: string[] = [];
+
+  const flushParagraph = () => {
+    if (!currentParagraph.length) return;
+    elements.push(
+      <p key={`p-${elements.length}`} className="dash_mdParagraph">
+        {processInlineMarkdown(currentParagraph.join("\n"))}
+      </p>
+    );
+    currentParagraph = [];
+  };
+
+  const flushList = () => {
+    if (!listType || listAccum.length === 0) return;
+    const items = listAccum.map((item, idx) => (
+      <li key={`li-${elements.length}-${idx}`} className="dash_mdLI">
+        {processInlineMarkdown(item.text)}
+        {item.subItems.length > 0 && (
+          <ul className="dash_mdUL">
+            {item.subItems.map((sub, si) => (
+              <li key={`sub-${idx}-${si}`} className="dash_mdLI">{processInlineMarkdown(sub)}</li>
+            ))}
+          </ul>
+        )}
+      </li>
+    ));
+    elements.push(
+      listType === "ul"
+        ? <ul key={`ul-${elements.length}`} className="dash_mdUL">{items}</ul>
+        : <ol key={`ol-${elements.length}`} className="dash_mdOL">{items}</ol>
+    );
+    listType = null;
+    listAccum = [];
+  };
+
+  const flushBlockquote = () => {
+    if (blockquoteLines.length === 0) return;
+    elements.push(
+      <blockquote key={`bq-${elements.length}`} className="dash_mdBlockquote">
+        {blockquoteLines.map((l, i) => (
+          <p key={i} className="dash_mdBlockquoteLine">{processInlineMarkdown(l)}</p>
+        ))}
+      </blockquote>
+    );
+    blockquoteLines = [];
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (line.startsWith("```")) {
+      flushParagraph(); flushList(); flushBlockquote();
+      if (!inCodeBlock) {
+        inCodeBlock = true;
+        codeLanguage = line.slice(3).trim();
+        codeContent = [];
+      } else {
+        if (!hideCodeBlocks) {
+          const raw = codeContent.join("\n");
+          const lang = codeLanguage || "code";
+          const highlighted = highlightCode(raw, lang);
+          elements.push(
+            <div key={`code-${elements.length}`} className="dash_mdCodeBlock">
+              <div className="dash_mdCodeHeader">
+                <span className="dash_mdCodeLang">{lang}</span>
+                <button type="button" className="dash_mdCodeCopy" onClick={() => navigator.clipboard.writeText(raw)}>
+                  <Copy size={12} />
+                  <span>Copy</span>
+                </button>
+              </div>
+              <pre className="dash_mdCodeContent">
+                <code dangerouslySetInnerHTML={{ __html: highlighted }} />
+              </pre>
+            </div>
+          );
+        }
+        inCodeBlock = false;
+        codeLanguage = "";
+        codeContent = [];
+      }
+      continue;
+    }
+
+    if (inCodeBlock) { codeContent.push(line); continue; }
+
+    if (/^\s*---+\s*$/.test(line)) {
+      flushParagraph(); flushList(); flushBlockquote();
+      elements.push(<hr key={`hr-${elements.length}`} className="dash_mdDivider" />);
+      continue;
+    }
+
+    const bqMatch = line.match(/^>\s?(.*)$/);
+    if (bqMatch) {
+      flushParagraph(); flushList();
+      blockquoteLines.push(bqMatch[1]);
+      continue;
+    } else if (blockquoteLines.length > 0) {
+      flushBlockquote();
+    }
+
+    if (line.startsWith("### ")) {
+      flushParagraph(); flushList();
+      elements.push(<h4 key={`h3-${elements.length}`} className="dash_mdH3">{processInlineMarkdown(line.slice(4))}</h4>);
+      continue;
+    }
+    if (line.startsWith("## ")) {
+      flushParagraph(); flushList();
+      elements.push(<h3 key={`h2-${elements.length}`} className="dash_mdH2">{processInlineMarkdown(line.slice(3))}</h3>);
+      continue;
+    }
+    if (line.startsWith("# ")) {
+      flushParagraph(); flushList();
+      elements.push(<h2 key={`h1-${elements.length}`} className="dash_mdH1">{processInlineMarkdown(line.slice(2))}</h2>);
+      continue;
+    }
+
+    // ── Sub-item (indented by 2+ spaces) — append to last parent item ──
+    const subMatch = line.match(/^(\s{2,})[-*]\s+(.+)$/) || line.match(/^(\s{2,})\d+\.\s+(.+)$/);
+    if (subMatch && listType && listAccum.length > 0) {
+      listAccum[listAccum.length - 1].subItems.push(subMatch[2]);
+      continue;
+    }
+
+    // ── Root-level unordered list item (no leading indent) ──
+    const ulMatch = line.match(/^[-*]\s+(.+)$/);
+    if (ulMatch) {
+      flushParagraph();
+      if (listType !== "ul") { flushList(); listType = "ul"; }
+      listAccum.push({ text: ulMatch[1], subItems: [] });
+      continue;
+    }
+
+    // ── Root-level ordered list item (no leading indent) ──
+    const olMatch = line.match(/^\d+\.\s+(.+)$/);
+    if (olMatch) {
+      flushParagraph();
+      if (listType !== "ol") { flushList(); listType = "ol"; }
+      listAccum.push({ text: olMatch[1], subItems: [] });
+      continue;
+    }
+
+    // ── Empty line ──
+    if (line.trim() === "") {
+      flushParagraph();
+      flushBlockquote();
+
+      // Look-ahead: don't flush list if next non-empty line continues it
+      if (listType) {
+        let shouldFlush = true;
+        for (let j = i + 1; j < lines.length; j++) {
+          const nextLine = lines[j];
+          if (nextLine.trim() === "") continue;
+          if (listType === "ol" && /^\d+\.\s+/.test(nextLine)) {
+            shouldFlush = false;
+          } else if (listType === "ul" && /^[-*]\s+/.test(nextLine)) {
+            shouldFlush = false;
+          }
+          break;
+        }
+        if (shouldFlush) flushList();
+      }
+
+      continue;
+    }
+
+    flushList(); flushBlockquote();
+    currentParagraph.push(line);
+  }
+
+  flushParagraph();
+  flushList();
+  flushBlockquote();
+
+  return elements;
+}
+
+// ============================================================================
 // MESSAGE BUBBLE with Markdown support
 // ============================================================================
 
@@ -535,205 +775,6 @@ export function MessageBubble({ message, hideCodeBlocks = false, isLatestAi = fa
   }
 
   const hasPastedContents = message.pastedContents && message.pastedContents.length > 0;
-
-  // Simple Markdown renderer
-  const renderMarkdown = (text: string) => {
-    if (!text) return null;
-
-    const lines = text.replace(/\r\n/g, "\n").split("\n");
-    const elements: JSX.Element[] = [];
-
-    let currentParagraph: string[] = [];
-    let inCodeBlock = false;
-    let codeContent: string[] = [];
-    let codeLanguage = "";
-
-    let listType: "ul" | "ol" | null = null;
-    let listItems: JSX.Element[] = [];
-    let blockquoteLines: string[] = [];
-
-    const processInlineMarkdown = (input: string) => {
-      const parts: (string | JSX.Element)[] = [];
-      let remaining = input;
-      let k = 0;
-
-      while (remaining.length > 0) {
-        const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
-        const italicMatch = remaining.match(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/);
-        const codeMatch = remaining.match(/`([^`]+)`/);
-        const linkMatch = remaining.match(/\[([^\]]+)\]\(([^)]+)\)/);
-        const highlightMatch = remaining.match(/==([+\-~?]?)(.+?)==/);
-
-        const matches = [
-          boldMatch ? { type: "bold", match: boldMatch, index: boldMatch.index! } : null,
-          italicMatch ? { type: "italic", match: italicMatch, index: italicMatch.index! } : null,
-          codeMatch ? { type: "code", match: codeMatch, index: codeMatch.index! } : null,
-          linkMatch ? { type: "link", match: linkMatch, index: linkMatch.index! } : null,
-          highlightMatch ? { type: "highlight", match: highlightMatch, index: highlightMatch.index! } : null,
-        ].filter(Boolean).sort((a, b) => a!.index - b!.index);
-
-        if (matches.length === 0) { parts.push(remaining); break; }
-
-        const first = matches[0]!;
-        if (first.index > 0) parts.push(remaining.slice(0, first.index));
-
-        if (first.type === "bold") {
-          parts.push(<strong key={k++}>{first.match[1]}</strong>);
-        } else if (first.type === "italic") {
-          parts.push(<em key={k++}>{first.match[1]}</em>);
-        } else if (first.type === "code") {
-          parts.push(<code key={k++} className="dash_mdInlineCode">{first.match[1]}</code>);
-        } else if (first.type === "link") {
-          parts.push(
-            <a key={k++} className="dash_mdLink" href={first.match[2]} target="_blank" rel="noopener noreferrer">
-              {first.match[1]}
-            </a>
-          );
-        } else if (first.type === "highlight") {
-          parts.push(
-            <mark key={k++} className="dash_highlight">{first.match[2]}</mark>
-          );
-        }
-        remaining = remaining.slice(first.index + first.match[0].length);
-      }
-      return parts;
-    };
-
-    const flushParagraph = () => {
-      if (!currentParagraph.length) return;
-      elements.push(
-        <p key={`p-${elements.length}`} className="dash_mdParagraph">
-          {processInlineMarkdown(currentParagraph.join("\n"))}
-        </p>
-      );
-      currentParagraph = [];
-    };
-
-    const flushList = () => {
-      if (!listType || listItems.length === 0) return;
-      elements.push(
-        listType === "ul"
-          ? <ul key={`ul-${elements.length}`} className="dash_mdUL">{listItems}</ul>
-          : <ol key={`ol-${elements.length}`} className="dash_mdOL">{listItems}</ol>
-      );
-      listType = null;
-      listItems = [];
-    };
-
-    const flushBlockquote = () => {
-      if (blockquoteLines.length === 0) return;
-      elements.push(
-        <blockquote key={`bq-${elements.length}`} className="dash_mdBlockquote">
-          {blockquoteLines.map((l, i) => (
-            <p key={i} className="dash_mdBlockquoteLine">{processInlineMarkdown(l)}</p>
-          ))}
-        </blockquote>
-      );
-      blockquoteLines = [];
-    };
-
-    const handleCodeCopy = (code: string) => {
-      navigator.clipboard.writeText(code);
-    };
-
-    for (const line of lines) {
-      if (line.startsWith("```")) {
-        flushParagraph(); flushList(); flushBlockquote();
-        if (!inCodeBlock) {
-          inCodeBlock = true;
-          codeLanguage = line.slice(3).trim();
-          codeContent = [];
-        } else {
-          if (!hideCodeBlocks) {
-            const raw = codeContent.join("\n");
-            const lang = codeLanguage || "code";
-            const highlighted = highlightCode(raw, lang);
-            elements.push(
-              <div key={`code-${elements.length}`} className="dash_mdCodeBlock">
-                <div className="dash_mdCodeHeader">
-                  <span className="dash_mdCodeLang">{lang}</span>
-                  <button type="button" className="dash_mdCodeCopy" onClick={() => handleCodeCopy(raw)}>
-                    <Copy size={12} />
-                    <span>Copy</span>
-                  </button>
-                </div>
-                <pre className="dash_mdCodeContent">
-                  <code dangerouslySetInnerHTML={{ __html: highlighted }} />
-                </pre>
-              </div>
-            );
-          }
-          inCodeBlock = false;
-          codeLanguage = "";
-          codeContent = [];
-        }
-        continue;
-      }
-
-      if (inCodeBlock) { codeContent.push(line); continue; }
-
-      if (/^\s*---+\s*$/.test(line)) {
-        flushParagraph(); flushList(); flushBlockquote();
-        elements.push(<hr key={`hr-${elements.length}`} className="dash_mdDivider" />);
-        continue;
-      }
-
-      const bqMatch = line.match(/^>\s?(.*)$/);
-      if (bqMatch) {
-        flushParagraph(); flushList();
-        blockquoteLines.push(bqMatch[1]);
-        continue;
-      } else if (blockquoteLines.length > 0) {
-        flushBlockquote();
-      }
-
-      if (line.startsWith("### ")) {
-        flushParagraph(); flushList();
-        elements.push(<h4 key={`h3-${elements.length}`} className="dash_mdH3">{processInlineMarkdown(line.slice(4))}</h4>);
-        continue;
-      }
-      if (line.startsWith("## ")) {
-        flushParagraph(); flushList();
-        elements.push(<h3 key={`h2-${elements.length}`} className="dash_mdH2">{processInlineMarkdown(line.slice(3))}</h3>);
-        continue;
-      }
-      if (line.startsWith("# ")) {
-        flushParagraph(); flushList();
-        elements.push(<h2 key={`h1-${elements.length}`} className="dash_mdH1">{processInlineMarkdown(line.slice(2))}</h2>);
-        continue;
-      }
-
-      const ulMatch = line.match(/^\s*[-*]\s+(.+)$/);
-      if (ulMatch) {
-        flushParagraph();
-        if (listType !== "ul") { flushList(); listType = "ul"; }
-        listItems.push(<li key={`li-${elements.length}-${listItems.length}`} className="dash_mdLI">{processInlineMarkdown(ulMatch[1])}</li>);
-        continue;
-      }
-
-      const olMatch = line.match(/^\s*\d+\.\s+(.+)$/);
-      if (olMatch) {
-        flushParagraph();
-        if (listType !== "ol") { flushList(); listType = "ol"; }
-        listItems.push(<li key={`li-${elements.length}-${listItems.length}`} className="dash_mdLI">{processInlineMarkdown(olMatch[1])}</li>);
-        continue;
-      }
-
-      if (line.trim() === "") {
-        flushParagraph(); flushList(); flushBlockquote();
-        continue;
-      }
-
-      flushList(); flushBlockquote();
-      currentParagraph.push(line);
-    }
-
-    flushParagraph();
-    flushList();
-    flushBlockquote();
-
-    return elements;
-  };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.text);
@@ -794,7 +835,7 @@ export function MessageBubble({ message, hideCodeBlocks = false, isLatestAi = fa
         )}
 
         <div className="dash_messageText">
-          {isUser ? displayText : renderMarkdown(displayText)}
+          {isUser ? displayText : renderMarkdown(displayText, hideCodeBlocks)}
           {isTyping && <span className="dash_typingCursor" />}
         </div>
 
