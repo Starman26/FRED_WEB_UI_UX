@@ -337,12 +337,6 @@ export default function AskSentinela() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Apply saved theme
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("cora.theme") || "light";
-    document.documentElement.setAttribute("data-theme", savedTheme);
-  }, []);
-
   // ── Load user profile ──
   useEffect(() => {
     if (!user) return;

@@ -258,6 +258,8 @@
   }
   [data-theme="dark"] .dash_chatTextarea { color: var(--text-primary); }
   [data-theme="dark"] .dash_chatTextarea::placeholder { color: var(--text-dim); }
+  [data-theme="dark"] .dash_typewriterPlaceholder { color: var(--text-muted); }
+  [data-theme="dark"] .dash_typewriterCursor { color: var(--text-muted); }
   [data-theme="dark"] .dash_chatSendBtn { background: var(--hover-overlay); color: var(--text-primary); }
   [data-theme="dark"] .dash_chatSendBtn:hover:not(:disabled) { background: var(--active-overlay); }
   [data-theme="dark"] .dash_chatSendBtn--stop { background: var(--hover-overlay); color: var(--text-primary); }
@@ -807,7 +809,41 @@
   [data-theme="dark"] .studio__emptyIcon  { color: var(--text-dim); }
   [data-theme="dark"] .studio__emptyTitle { color: var(--text-secondary); }
   [data-theme="dark"] .studio__emptySub   { color: var(--text-muted); }
-  
+
+  /* Studio Modal */
+  [data-theme="dark"] .studio__modalCard {
+    background: var(--bg-elevated);
+    border-color: var(--border-base);
+  }
+  [data-theme="dark"] .studio__modalHeader h2 { color: var(--text-primary); }
+  [data-theme="dark"] .studio__modalClose { color: var(--text-muted); }
+  [data-theme="dark"] .studio__modalClose:hover { background: var(--hover-overlay); }
+  [data-theme="dark"] .studio__modalField label { color: var(--text-secondary); }
+  [data-theme="dark"] .studio__modalField input,
+  [data-theme="dark"] .studio__modalField textarea {
+    background: var(--bg-surface);
+    border-color: var(--border-base);
+    color: var(--text-primary);
+  }
+  [data-theme="dark"] .studio__modalDiffBtn {
+    border-color: var(--border-base);
+    color: var(--text-muted);
+  }
+  [data-theme="dark"] .studio__modalDiffBtn.is-active {
+    background: var(--hover-overlay);
+    border-color: var(--text-primary);
+    color: var(--text-primary);
+  }
+  [data-theme="dark"] .studio__modalCancel {
+    border-color: var(--border-base);
+    color: var(--text-secondary);
+  }
+  [data-theme="dark"] .studio__modalSubmit {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+    color: var(--text-primary);
+  }
+
   /* Progress tab */
   [data-theme="dark"] .studio__progressItem { background: var(--bg-surface); border-color: var(--border-soft); }
   [data-theme="dark"] .studio__progressItemTitle    { color: var(--text-primary); }
@@ -822,33 +858,165 @@
   [data-theme="dark"] .studio__typeBadge--automation { background: var(--hover-overlay); color: var(--text-secondary); }
   
   /* Practice view */
-  [data-theme="dark"] .studio__practiceHeader { background: var(--bg-chrome); border-bottom-color: var(--border-soft); }
+  [data-theme="dark"] .studio__practiceHeader { background: var(--bg-chrome); border-bottom-color: transparent; }
   [data-theme="dark"] .studio__practiceBack   { color: var(--text-secondary); }
+  [data-theme="dark"] .studio__practiceBack:hover { color: var(--text-primary); background: var(--hover-overlay); }
   [data-theme="dark"] .studio__practiceTitle  { color: var(--text-primary); }
-  [data-theme="dark"] .studio__practiceTimer  { color: var(--text-muted); }
+  [data-theme="dark"] .studio__practiceTimer  { color: var(--text-secondary); }
   [data-theme="dark"] .studio__practicePauseBtn { color: var(--text-secondary); border-color: var(--border-base); background: transparent; }
-  [data-theme="dark"] .studio__practicePauseBtn:hover { border-color: var(--border-strong); background: var(--hover-overlay); }
+  [data-theme="dark"] .studio__practicePauseBtn:hover { color: var(--text-primary); border-color: var(--border-strong); background: rgba(160, 165, 210, 0.12); }
   [data-theme="dark"] .studio__practicePauseBtn.is-paused { color: var(--text-primary); border-color: var(--border-strong); background: var(--active-overlay); }
-  [data-theme="dark"] .studio__practiceSidebar { background: var(--bg-surface); border-right-color: var(--border-soft); }
+  [data-theme="dark"] .studio__practiceSidebarNav { border-bottom-color: transparent; }
+  [data-theme="dark"] .studio__practiceSidebar { background: var(--bg-surface); border-right-color: var(--border-base); }
   [data-theme="dark"] .studio__practiceSidebarTitle { color: var(--text-primary); }
-  [data-theme="dark"] .studio__practiceDiffBadge { color: var(--text-secondary) !important; border-color: var(--border-base) !important; }
-  [data-theme="dark"] .studio__practiceProgressBar  { background: var(--border-soft); }
-  [data-theme="dark"] .studio__practiceProgressFill { background: var(--text-secondary); }
-  [data-theme="dark"] .studio__practiceProgressText { color: var(--text-muted); }
+  [data-theme="dark"] .studio__practiceSidebarHeader { border-bottom-color: var(--border-soft); }
+  [data-theme="dark"] .studio__practiceProgressLabel { color: var(--text-muted); }
+  [data-theme="dark"] .studio__practiceProgressBar  { background: var(--border-base); }
+  [data-theme="dark"] .studio__practiceProgressFill { background: var(--accent); }
+  [data-theme="dark"] .studio__practiceProgressText { color: var(--text-secondary); }
+  [data-theme="dark"] .studio__practiceSteps { border-color: var(--border-soft); }
   [data-theme="dark"] .studio__practiceStep { border-left-color: var(--border-soft); }
   [data-theme="dark"] .studio__practiceStep:hover:not(:disabled) { background: var(--hover-overlay); }
-  [data-theme="dark"] .studio__practiceStep.is-completed .studio__practiceStepDot { background: var(--text-dim); }
-  [data-theme="dark"] .studio__practiceStep.is-active .studio__practiceStepDot   { background: var(--text-primary); }
-  [data-theme="dark"] .studio__practiceStep.is-pending .studio__practiceStepDot  { background: transparent; border-color: var(--text-dim); color: var(--text-dim); }
+  [data-theme="dark"] .studio__practiceDiffBadge {
+    color: var(--text-dim) !important;
+    border-color: var(--border-soft) !important;
+    background: transparent !important;
+  }
+  [data-theme="dark"] .studio__practiceStep.is-completed .studio__practiceStepDot { background: var(--text-secondary); border: none; color: var(--bg-chrome); }
+  [data-theme="dark"] .studio__practiceStep.is-active .studio__practiceStepDot   { background: var(--text-primary); box-shadow: 0 0 0 3px var(--active-overlay); }
+  [data-theme="dark"] .studio__practiceStep.is-pending .studio__practiceStepDot  { background: transparent; border-color: var(--border-strong); color: var(--text-dim); }
   [data-theme="dark"] .studio__practiceStepName { color: var(--text-secondary); }
-  [data-theme="dark"] .studio__practiceStep.is-active .studio__practiceStepName  { color: var(--text-primary); }
-  [data-theme="dark"] .studio__practiceStep.is-pending .studio__practiceStepName { color: var(--text-dim); }
+  [data-theme="dark"] .studio__practiceStep.is-completed .studio__practiceStepName { color: var(--text-primary); }
+  [data-theme="dark"] .studio__practiceStep.is-active .studio__practiceStepName  { color: var(--text-primary); font-weight: 500; }
+  [data-theme="dark"] .studio__practiceStep.is-pending .studio__practiceStepName { color: var(--text-muted); }
+  [data-theme="dark"] .studio__practiceSidebarFooter { border-top-color: var(--border-soft); }
   [data-theme="dark"] .studio__practiceExitBtn { border-color: var(--border-soft); color: var(--text-muted); }
   [data-theme="dark"] .studio__practiceExitBtn:hover { background: var(--hover-overlay); color: var(--text-secondary); }
   [data-theme="dark"] .studio__practiceChat       { background: var(--bg-base); }
   [data-theme="dark"] .studio__practiceChatInput  { border-top-color: var(--border-soft); }
   [data-theme="dark"] .studio__practiceChatEmpty  { color: var(--text-dim); }
   [data-theme="dark"] .studio__practiceLoading    { color: var(--text-muted); }
+  [data-theme="dark"] .studio__practiceDisclaimer { color: var(--text-dim); }
+  
+  /* ─── Robot pill ─── */
+  [data-theme="dark"] .studio__robotPill {
+    background: var(--bg-elevated);
+    border-color: var(--border-base);
+    color: var(--text-secondary);
+  }
+  [data-theme="dark"] .studio__robotPill--connected {
+    border-color: rgba(100, 200, 130, 0.3);
+    color: rgba(120, 210, 140, 0.9);
+  }
+  [data-theme="dark"] .studio__robotPill--disconnected {
+    border-color: var(--border-base);
+    color: var(--text-muted);
+  }
+  [data-theme="dark"] .studio__robotPill--mono {
+    background: transparent;
+    border-color: var(--border-base);
+    color: var(--text-secondary);
+  }
+  [data-theme="dark"] .studio__robotPill--mono:hover {
+    background: rgba(160, 165, 210, 0.10);
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+  }
+  [data-theme="dark"] .studio__robotPill--mono.is-active {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #f87171;
+  }
+  [data-theme="dark"] .studio__robotDot--connected    { background: #4ade80; }
+  [data-theme="dark"] .studio__robotDot--disconnected { background: var(--text-dim); }
+  [data-theme="dark"] .studio__robotInfoBtn           { color: var(--text-dim); }
+  [data-theme="dark"] .studio__robotInfoBtn:hover     { color: var(--text-secondary); }
+  [data-theme="dark"] .studio__robotSelectedCount     { background: var(--accent); color: var(--accent-fg); }
+  [data-theme="dark"] .studio__robotChevron           { color: var(--text-dim); }
+  
+  /* ─── Robot dropdown ─── */
+  [data-theme="dark"] .studio__robotDropdown {
+    background: var(--bg-elevated);
+    border-color: var(--border-base);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  [data-theme="dark"] .studio__robotDropdownItem      { color: var(--text-primary); }
+  [data-theme="dark"] .studio__robotDropdownItem:hover { background: var(--hover-overlay); }
+  [data-theme="dark"] .studio__robotDropdownName      { color: var(--text-primary); }
+  [data-theme="dark"] .studio__robotCheckbox          { accent-color: var(--accent); }
+  
+  /* ─── Paused / Completed overlays ─── */
+  [data-theme="dark"] .studio__practicePausedOverlay,
+  [data-theme="dark"] .studio__practiceCallOverlay {
+    background: rgba(14, 15, 18, 0.7);
+    backdrop-filter: blur(4px);
+  }
+  [data-theme="dark"] .studio__practicePausedCard,
+  [data-theme="dark"] .studio__practiceCompletedCard,
+  [data-theme="dark"] .studio__practiceCallCard,
+  [data-theme="dark"] .studio__practiceNoRobotsCard {
+    background: var(--bg-elevated);
+    border-color: var(--border-base);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+    color: var(--text-primary);
+  }
+  [data-theme="dark"] .studio__practicePausedTitle,
+  [data-theme="dark"] .studio__practiceCompletedTitle,
+  [data-theme="dark"] .studio__practiceCallTitle      { color: var(--text-primary); }
+  [data-theme="dark"] .studio__practicePausedDesc,
+  [data-theme="dark"] .studio__practiceCompletedDesc,
+  [data-theme="dark"] .studio__practiceCallDesc       { color: var(--text-secondary); }
+  [data-theme="dark"] .studio__practicePausedResumeBtn,
+  [data-theme="dark"] .studio__practiceCompletedPrimaryBtn {
+    background: var(--accent);
+    color: var(--accent-fg);
+  }
+  [data-theme="dark"] .studio__practiceCompletedPrimaryBtn:hover { background: var(--accent-hover); }
+  [data-theme="dark"] .studio__practiceCompletedIcon  { color: #4ade80; }
+  [data-theme="dark"] .studio__practiceCompletedSecondaryBtn {
+    background: var(--bg-surface);
+    border-color: var(--border-base);
+    color: var(--text-secondary);
+  }
+  [data-theme="dark"] .studio__practiceCompletedSecondaryBtn:hover {
+    background: var(--hover-overlay);
+    color: var(--text-primary);
+  }
+  
+  /* ─── Call indicators ─── */
+  [data-theme="dark"] .studio__practiceCallIndicator             { color: var(--text-secondary); }
+  [data-theme="dark"] .studio__practiceCallIndicator--listening  { color: #4ade80; }
+  [data-theme="dark"] .studio__practiceCallIndicator--speaking   { color: #60a5fa; }
+  [data-theme="dark"] .studio__practiceCallIndicator--thinking   { color: var(--text-muted); }
+  [data-theme="dark"] .studio__practiceCallTranscript {
+    color: var(--text-secondary);
+    border-color: var(--border-soft);
+    background: var(--hover-overlay);
+  }
+  [data-theme="dark"] .studio__practiceCallStopBtn {
+    background: var(--hover-overlay);
+    border-color: var(--border-base);
+    color: var(--text-primary);
+  }
+  [data-theme="dark"] .studio__practiceCallStopBtn:hover { background: var(--active-overlay); }
+  [data-theme="dark"] .studio__practiceNoRobotsDismiss {
+    color: var(--text-muted);
+    border-color: var(--border-soft);
+  }
+  [data-theme="dark"] .studio__practiceNoRobotsDismiss:hover {
+    background: var(--hover-overlay);
+    color: var(--text-primary);
+  }
+  
+  /* ─── Tool pill ─── */
+  [data-theme="dark"] .studio__practiceToolPill {
+    background: var(--hover-overlay);
+    border-color: var(--border-soft);
+    color: var(--text-secondary);
+  }
+  [data-theme="dark"] .studio__practiceToolPillIcon  { color: var(--text-muted); }
+  [data-theme="dark"] .studio__practiceToolPillCheck { color: #4ade80; }
+  [data-theme="dark"] .studio__practiceToolStatus    { color: var(--text-muted); }
   
   /* ============================================================================
      PROFILE PAGE
@@ -1006,6 +1174,189 @@
      GLOBAL TRANSITIONS
      ============================================================================ */
   
+  /* ============================================================================
+     EQUIPMENT TAB + TROUBLESHOOT VIEW
+     ============================================================================ */
+
+  [data-theme="dark"] .studio__equipmentTitle { color: var(--text-primary); }
+  [data-theme="dark"] .studio__equipmentEmptyTitle { color: var(--text-primary); }
+  [data-theme="dark"] .studio__equipmentEmptyDesc { color: var(--text-muted); }
+  [data-theme="dark"] .studio__equipmentCard {
+    background: var(--bg-surface);
+    border-color: var(--border-soft);
+  }
+  [data-theme="dark"] .studio__equipmentCard:hover {
+    border-color: var(--border-base);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+  [data-theme="dark"] .studio__equipmentCardIcon {
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+  }
+  [data-theme="dark"] .studio__equipmentCardName { color: var(--text-primary); }
+  [data-theme="dark"] .studio__equipmentCardMeta { color: var(--text-muted); }
+  [data-theme="dark"] .studio__equipmentBadge--connected,
+  [data-theme="dark"] .studio__equipmentBadge--docs {
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+  }
+  [data-theme="dark"] .studio__equipmentInfoBtn { color: var(--text-dim); }
+  [data-theme="dark"] .studio__equipmentInfoBtn:hover {
+    background: var(--hover-overlay);
+    color: var(--text-secondary);
+  }
+  [data-theme="dark"] .studio__equipmentPopupOverlay {
+    background: rgba(0, 0, 0, 0.5);
+  }
+  [data-theme="dark"] .studio__equipmentPopupCard {
+    background: var(--bg-elevated);
+    border-color: var(--border-base);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+  [data-theme="dark"] .studio__equipmentPopupIcon {
+    background: var(--bg-surface);
+    color: var(--text-muted);
+  }
+  [data-theme="dark"] .studio__equipmentPopupTitle { color: var(--text-primary); }
+  [data-theme="dark"] .studio__equipmentPopupDesc { color: var(--text-muted); }
+  [data-theme="dark"] .studio__equipmentPopupPrimary {
+    background: var(--accent);
+    color: var(--accent-fg);
+  }
+  [data-theme="dark"] .studio__equipmentPopupPrimary:hover { background: var(--accent-hover); }
+  [data-theme="dark"] .studio__equipmentPopupSecondary {
+    color: var(--text-secondary);
+    border-color: var(--border-base);
+  }
+  [data-theme="dark"] .studio__equipmentPopupSecondary:hover {
+    background: var(--hover-overlay);
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+  }
+  [data-theme="dark"] .studio__equipmentAddBtn {
+    background: var(--accent);
+    color: var(--accent-fg);
+  }
+  [data-theme="dark"] .studio__equipmentAddBtn:hover { background: var(--accent-hover); }
+
+  /* Troubleshoot view */
+  [data-theme="dark"] .studio__troubleshootSidebar {
+    background: var(--bg-surface);
+    border-right-color: var(--border-soft);
+  }
+  [data-theme="dark"] .studio__troubleshootEquipInfo { border-bottom-color: var(--border-soft); }
+  [data-theme="dark"] .studio__troubleshootEquipIcon {
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+  }
+  [data-theme="dark"] .studio__troubleshootEquipName { color: var(--text-primary); }
+  [data-theme="dark"] .studio__troubleshootEquipType { color: var(--text-muted); }
+  [data-theme="dark"] .studio__troubleshootManualBadge {
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+  }
+  [data-theme="dark"] .studio__troubleshootSteps { border-bottom-color: var(--border-soft); }
+  [data-theme="dark"] .studio__troubleshootStepsTitle { color: var(--text-dim); }
+  [data-theme="dark"] .studio__troubleshootStepLabel { color: var(--text-muted); }
+  [data-theme="dark"] .studio__troubleshootStep--active .studio__troubleshootStepLabel { color: var(--text-primary); }
+  [data-theme="dark"] .studio__troubleshootStep--done .studio__troubleshootStepLabel { color: var(--text-primary); }
+  [data-theme="dark"] .studio__troubleshootStep--pending .studio__troubleshootStepDot { border-color: var(--border-base); color: var(--text-dim); }
+  [data-theme="dark"] .studio__troubleshootStep--active .studio__troubleshootStepDot { border-color: var(--text-primary); color: var(--text-primary); }
+  [data-theme="dark"] .studio__troubleshootMain { background: var(--bg-base); }
+  [data-theme="dark"] .studio__troubleshootChat { background: var(--bg-base); }
+  [data-theme="dark"] .studio__troubleshootThinking { color: var(--text-muted); }
+  [data-theme="dark"] .studio__troubleshootStartTitle { color: var(--text-primary); }
+  [data-theme="dark"] .studio__troubleshootStartDesc { color: var(--text-muted); }
+  [data-theme="dark"] .studio__troubleshootStartIcon {
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+  }
+  [data-theme="dark"] .studio__troubleshootTextarea {
+    background: var(--bg-surface);
+    border-color: var(--border-base);
+    color: var(--text-primary);
+  }
+  [data-theme="dark"] .studio__troubleshootTextarea:focus { border-color: var(--border-strong); }
+  [data-theme="dark"] .studio__troubleshootTextarea::placeholder { color: var(--text-dim); }
+  [data-theme="dark"] .studio__troubleshootStartBtn {
+    background: var(--accent);
+    color: var(--accent-fg);
+  }
+  [data-theme="dark"] .studio__troubleshootStartBtn:hover { background: var(--accent-hover); }
+  [data-theme="dark"] .studio__troubleshootInputBox {
+    background: var(--bg-surface);
+    border-color: var(--border-base);
+  }
+  [data-theme="dark"] .studio__troubleshootInputBox:focus-within { border-color: var(--border-strong); }
+  [data-theme="dark"] .studio__troubleshootInput { color: var(--text-primary); }
+  [data-theme="dark"] .studio__troubleshootInput::placeholder { color: var(--text-dim); }
+  [data-theme="dark"] .studio__troubleshootSendBtn {
+    background: var(--accent);
+    color: var(--accent-fg);
+  }
+  [data-theme="dark"] .studio__troubleshootSendBtn:hover { background: var(--accent-hover); }
+
+  /* Repair Avatar (dark) */
+  [data-theme="dark"] .ts__avatarFace { background: var(--bg-surface); }
+  [data-theme="dark"] .ts__avatarEye { background: var(--text-primary); }
+
+  /* Troubleshoot sidebar sections (dark) */
+  [data-theme="dark"] .ts__sidebarSection { border-color: var(--border-base); }
+  [data-theme="dark"] .ts__sidebarSectionTitle { color: var(--text-dim); }
+  [data-theme="dark"] .ts__sidebarItem { color: var(--text-secondary); }
+  [data-theme="dark"] .ts__sidebarToggle { border-color: var(--border-base); }
+  [data-theme="dark"] .ts__sidebarToggleLabel { color: var(--text-secondary); }
+  [data-theme="dark"] .ts__toggleSwitch { background: var(--border-base); }
+  [data-theme="dark"] .ts__toggleSwitch.is-active { background: var(--text-primary); }
+
+  /* Custom Select (dark) */
+  [data-theme="dark"] .studio__customSelectBtn {
+    background: var(--bg-surface);
+    border-color: var(--border-base);
+    color: var(--text-primary);
+  }
+  [data-theme="dark"] .studio__customSelectBtn:hover {
+    border-color: var(--border-strong);
+  }
+  [data-theme="dark"] .studio__customSelectBtn.is-open {
+    border-color: var(--text-primary);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
+  }
+  [data-theme="dark"] .studio__customSelectIcon { color: var(--text-muted); }
+  [data-theme="dark"] .studio__customSelectChevron { color: var(--text-dim); }
+  [data-theme="dark"] .studio__customSelectDropdown {
+    background: var(--bg-elevated);
+    border-color: var(--border-base);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  }
+  [data-theme="dark"] .studio__customSelectOption {
+    color: var(--text-secondary);
+  }
+  [data-theme="dark"] .studio__customSelectOption:hover {
+    background: var(--hover-overlay);
+    color: var(--text-primary);
+  }
+  [data-theme="dark"] .studio__customSelectOption.is-selected {
+    background: var(--hover-overlay);
+    color: var(--text-primary);
+  }
+  [data-theme="dark"] .studio__multiSelectRow {
+    color: var(--text-secondary);
+  }
+  [data-theme="dark"] .studio__multiSelectRow:hover {
+    background: var(--hover-overlay);
+    color: var(--text-primary);
+  }
+  [data-theme="dark"] .studio__multiSelectRow.is-checked {
+    background: var(--hover-overlay);
+    color: var(--text-primary);
+  }
+  [data-theme="dark"] .studio__multiSelectEmpty {
+    color: var(--text-dim);
+  }
+
+  /* Create Equipment Modal (reuses studio__modal* classes, already themed) */
+
   .dash_root, .analysis_root, .prof_root, .ask_root,
   .ll_content, .ll_titleBar, .sidebar,
   .dash_header, .analysis_header, .prof_header,

@@ -797,6 +797,51 @@ function DashboardHeader({
 }
 
 // ============================================================================
+// TYPEWRITER PLACEHOLDER
+// ============================================================================
+
+const TYPEWRITER_PHRASES = [
+  "Try something...",
+  "Ask me anything...",
+  "What do you need today?",
+  "Start a new experiment...",
+];
+
+function TypewriterPlaceholder() {
+  const [displayed, setDisplayed] = useState("");
+  const [phraseIdx, setPhraseIdx] = useState(0);
+  const [charIdx, setCharIdx] = useState(0);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (done) return;
+    if (charIdx < TYPEWRITER_PHRASES[phraseIdx].length) {
+      const t = setTimeout(() => {
+        setDisplayed(TYPEWRITER_PHRASES[phraseIdx].slice(0, charIdx + 1));
+        setCharIdx(c => c + 1);
+      }, 45);
+      return () => clearTimeout(t);
+    } else {
+      setDone(true);
+      const t = setTimeout(() => {
+        const next = (phraseIdx + 1) % TYPEWRITER_PHRASES.length;
+        setPhraseIdx(next);
+        setCharIdx(0);
+        setDisplayed("");
+        setDone(false);
+      }, 2200);
+      return () => clearTimeout(t);
+    }
+  }, [charIdx, done, phraseIdx]);
+
+  return (
+    <span className="dash_typewriterPlaceholder">
+      {displayed}<span className="dash_typewriterCursor">|</span>
+    </span>
+  );
+}
+
+// ============================================================================
 // DASHBOARD PAGE
 // ============================================================================
 
@@ -836,7 +881,12 @@ export default function Dashboard() {
   // Header display mode: 0 = header visible + titlebar hidden,
   //                      1 = header minimal (transparent, only menu+dots),
   //                      2 = header visible + titlebar visible
-  const [headerMode, setHeaderMode] = useState<0 | 1 | 2>(0);
+  const [headerMode, setHeaderMode] = useState<0 | 1 | 2>(() => {
+    try {
+      const saved = localStorage.getItem("cora.headerMode");
+      return saved === "1" ? 1 : 0;
+    } catch { return 0; }
+  });
   
   // Sessions state — start with empty, will be populated from Supabase or on first New Chat
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -2512,7 +2562,11 @@ export default function Dashboard() {
         maxCredits={totalTokens}
         titleBarVisible={headerMode === 2}
         headerMinimal={headerMode === 1}
-        onToggleTitleBar={() => setHeaderMode(prev => (prev === 0 ? 1 : 0))}
+        onToggleTitleBar={() => setHeaderMode(prev => {
+          const next = prev === 0 ? 1 : 0;
+          try { localStorage.setItem("cora.headerMode", String(next)); } catch {}
+          return next as 0 | 1 | 2;
+        })}
       />
 
       <main className={`dash_content dash_content--${chatMode}`}>
@@ -2775,18 +2829,21 @@ export default function Dashboard() {
 
           <div className={`dash_chatWrapper ${!chatStarted ? 'dash_chatWrapper--welcome' : ''}`}>
             <div className="dash_chatAboveBox" />
-            <ChatInput
-              value={chatMessage}
-              onChange={setChatMessage}
-              onSubmit={handleSendMessage}
-              placeholder="Try something..."
-              disabled={isLoading}
-              isLoading={isLoading}
-              onStop={handleStopThinking}
-              pendingFiles={pendingFiles}
-              onAttachClick={handleAttachClick}
-              onRemoveFile={handleRemoveFile}
-            />
+            <div className="dash_chatInputWrap">
+              {!chatStarted && chatMessage === "" && <TypewriterPlaceholder />}
+              <ChatInput
+                value={chatMessage}
+                onChange={setChatMessage}
+                onSubmit={handleSendMessage}
+                placeholder={!chatStarted ? "" : "Try something..."}
+                disabled={isLoading}
+                isLoading={isLoading}
+                onStop={handleStopThinking}
+                pendingFiles={pendingFiles}
+                onAttachClick={handleAttachClick}
+                onRemoveFile={handleRemoveFile}
+              />
+            </div>
             <input
               ref={fileInputRef}
               type="file"

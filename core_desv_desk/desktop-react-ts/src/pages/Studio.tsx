@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, Plus, Search, LayoutGrid, List, FileText, Sparkles, Info, MoreHorizontal, Loader2 } from "lucide-react";
+import { Menu, Plus, Search, LayoutGrid, List, FileText, Sparkles, Info, MoreHorizontal, Loader2, X } from "lucide-react";
 import { MapIcon, SparklesIcon, BoltIcon, PlayCircleIcon, CpuChipIcon, ChartBarIcon, PresentationChartLineIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
 import PracticeView from "../components/PracticeView";
+import EquipmentTab from "../components/EquipmentTab";
+import TroubleshootView from "../components/TroubleshootView";
+import type { EquipmentProfile } from "../components/EquipmentTab";
 import { loadUserProfile, timeAgo, parseSteps } from "../components/StudioHelpers";
 import type { Automation, UserProgress, ActivePractice } from "../components/StudioHelpers";
 
@@ -26,6 +29,7 @@ interface DashboardHeaderProps {
   titleBarVisible?: boolean;
   headerMinimal?: boolean;
   onToggleTitleBar?: () => void;
+  headerControls?: React.ReactNode;
 }
 
 function DashboardHeader({
@@ -34,6 +38,7 @@ function DashboardHeader({
   userError,
   currentPage = "Studio",
   headerMinimal = false,
+  headerControls,
 }: DashboardHeaderProps) {
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
@@ -98,6 +103,7 @@ function DashboardHeader({
 
         {!headerMinimal && (
           <div className="dash_headerRight">
+            {headerControls}
             <button type="button" className="dash_headerBtn">
               Feedback
             </button>
@@ -113,6 +119,86 @@ function DashboardHeader({
 }
 
 // ============================================================================
+// STUDIO MODAL — New Automation / Add Equipment
+// ============================================================================
+
+function StudioModal({ type, onClose, onSubmit }: {
+  type: "automation" | "equipment";
+  onClose: () => void;
+  onSubmit: (data: { title: string; description: string; difficulty: string }) => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [difficulty, setDifficulty] = useState("beginner");
+
+  return (
+    <div className="studio__modalOverlay" onClick={onClose}>
+      <div className="studio__modalCard" onClick={e => e.stopPropagation()}>
+        <div className="studio__modalHeader">
+          <h2>{type === "automation" ? "New Automation" : "Add Equipment"}</h2>
+          <button type="button" className="studio__modalClose" onClick={onClose}>
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="studio__modalBody">
+          <div className="studio__modalField">
+            <label>{type === "automation" ? "Name" : "Equipment name"}</label>
+            <input
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder={type === "automation" ? "e.g. Pick and place routine" : "e.g. UR5e Robot Arm"}
+              autoFocus
+            />
+          </div>
+
+          <div className="studio__modalField">
+            <label>Description</label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Brief description..."
+              rows={3}
+            />
+          </div>
+
+          {type === "automation" && (
+            <div className="studio__modalField">
+              <label>Difficulty</label>
+              <div className="studio__modalDiffBtns">
+                {["beginner", "intermediate", "advanced"].map(d => (
+                  <button
+                    key={d}
+                    type="button"
+                    className={`studio__modalDiffBtn ${difficulty === d ? "is-active" : ""}`}
+                    onClick={() => setDifficulty(d)}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="studio__modalFooter">
+          <button type="button" className="studio__modalCancel" onClick={onClose}>Cancel</button>
+          <button
+            type="button"
+            className="studio__modalSubmit"
+            onClick={() => onSubmit({ title, description, difficulty })}
+            disabled={!title.trim()}
+          >
+            {type === "automation" ? "Create" : "Add"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // STUDIO PAGE
 // ============================================================================
 
@@ -121,6 +207,7 @@ export default function Studio() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [userLoadError, setUserLoadError] = useState<string | null>(null);
   const [headerMode, setHeaderMode] = useState<0 | 1 | 2>(0);
+  const [practiceHeaderControls, setPracticeHeaderControls] = useState<React.ReactNode>(null);
   const [viewMode, setViewMode] = useState<"grid" | "columns" | "list">("grid");
   const [activeTab, setActiveTab] = useState<"modules" | "progress" | "analytics" | "equipment">("modules");
   const [chipDropdownOpen, setChipDropdownOpen] = useState(false);
@@ -134,6 +221,8 @@ export default function Studio() {
   const [dataLoading, setDataLoading] = useState(true);
   const [activePractice, setActivePractice] = useState<ActivePractice | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [modalOpen, setModalOpen] = useState<"automation" | "equipment" | null>(null);
+  const [activeTroubleshoot, setActiveTroubleshoot] = useState<EquipmentProfile | null>(null);
 
   // Derived lists
   const practices = automations.filter(a => a.type === "practice");
@@ -329,16 +418,16 @@ export default function Studio() {
     setActivePractice({ automation, sessionId: newSessionId });
   };
 
-  const handleNewAutomation = async () => {
+  const handleNewAutomation = async (data: { title: string; description: string; difficulty: string }) => {
     const newId = crypto.randomUUID();
     const now = new Date().toISOString();
 
     const { error } = await supabase.schema("lab").from("automations").insert({
       id: newId,
-      title: "Untitled automation",
-      description: null,
+      title: data.title,
+      description: data.description || null,
       type: "automation",
-      difficulty: "beginner",
+      difficulty: data.difficulty,
       md_content: null,
       sort_order: automations.length,
       created_by: userId,
@@ -353,20 +442,46 @@ export default function Studio() {
 
     setAutomations(prev => [...prev, {
       id: newId,
-      title: "Untitled automation",
-      description: null,
+      title: data.title,
+      description: data.description || null,
       type: "automation",
-      difficulty: "beginner",
+      difficulty: data.difficulty,
       md_content: null,
       sort_order: automations.length,
       created_by: userId,
       team_id: teamId,
       created_at: now,
     }]);
+    setModalOpen(null);
   };
 
   const practiceIcons = [MapIcon, SparklesIcon, BoltIcon, PlayCircleIcon];
   const practiceIconStyles = ["studio__actionIcon--purple", "studio__actionIcon--red", "studio__actionIcon--purple", "studio__actionIcon--red"];
+
+  // ── Troubleshoot view ──
+  if (activeTroubleshoot) {
+    return (
+      <div className={`dash_root ${headerMode === 1 ? "dash_root--headerMinimal" : ""}`}>
+        <DashboardHeader
+          userName={userName}
+          userRole={userRole}
+          userError={userLoadError}
+          currentPage="Studio"
+          titleBarVisible={headerMode === 2}
+          headerMinimal={headerMode === 1}
+          onToggleTitleBar={() => setHeaderMode(prev => (prev === 0 ? 1 : 0))}
+        />
+        <div className="dash_body studio" style={{ flex: 1, overflow: "auto" }}>
+          <TroubleshootView
+            equipment={activeTroubleshoot}
+            userId={userId}
+            teamId={teamId || ""}
+            onBack={() => setActiveTroubleshoot(null)}
+          />
+        </div>
+      </div>
+    );
+  }
 
   // ── Practice view ──
   if (activePractice) {
@@ -380,16 +495,19 @@ export default function Studio() {
           titleBarVisible={headerMode === 2}
           headerMinimal={headerMode === 1}
           onToggleTitleBar={() => setHeaderMode(prev => (prev === 0 ? 1 : 0))}
+          headerControls={practiceHeaderControls}
         />
         <div className="dash_body studio" style={{ flex: 1, overflow: "auto" }}>
           <PracticeView
             automation={activePractice.automation}
             sessionId={activePractice.sessionId}
             userId={userId}
+            teamId={teamId || ""}
             progress={userProgress[activePractice.automation.id]}
             onBack={() => setActivePractice(null)}
             onProgressUpdate={handleProgressUpdate}
             onRestart={handleRestartPractice}
+            onHeaderControls={setPracticeHeaderControls}
           />
         </div>
       </div>
@@ -416,7 +534,7 @@ export default function Studio() {
           <div className="studio__topBar">
             <h1 className="studio__title">Practice Room</h1>
             <div className="studio__topActions">
-              <button type="button" className="studio__createBtn" onClick={handleNewAutomation}>
+              <button type="button" className="studio__createBtn" onClick={() => setModalOpen("automation")}>
                 <Plus size={16} />
                 New Automation
               </button>
@@ -433,7 +551,7 @@ export default function Studio() {
                     <button
                       type="button"
                       className="studio__chipMenuItem"
-                      onClick={() => { setChipDropdownOpen(false); }}
+                      onClick={() => { setChipDropdownOpen(false); setModalOpen("equipment"); }}
                     >
                       <Plus size={14} />
                       Add equipment
@@ -663,15 +781,27 @@ export default function Studio() {
 
           {/* ── Tab: Equipment ── */}
           {activeTab === "equipment" && (
-            <div className="studio__emptyState">
-              <CpuChipIcon className="studio__emptyIcon" />
-              <h3 className="studio__emptyTitle">Equipment Profiles</h3>
-              <p className="studio__emptySub">Coming soon — manage and monitor your lab equipment here.</p>
-            </div>
+            <EquipmentTab
+              userId={userId}
+              teamId={teamId || ""}
+              onStartTroubleshoot={(eq) => setActiveTroubleshoot(eq)}
+            />
           )}
 
         </div>
       </div>
+
+      {/* Studio Modal */}
+      {modalOpen && (
+        <StudioModal
+          type={modalOpen}
+          onClose={() => setModalOpen(null)}
+          onSubmit={modalOpen === "automation" ? handleNewAutomation : (data) => {
+            console.log("[Studio] Add equipment:", data);
+            setModalOpen(null);
+          }}
+        />
+      )}
     </div>
   );
 }

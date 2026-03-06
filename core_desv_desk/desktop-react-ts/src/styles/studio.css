@@ -270,8 +270,8 @@
 }
 
 .studio__searchInput input:focus {
-  border-color: #a5b4fc;
-  box-shadow: 0 0 0 3px rgba(165, 180, 252, 0.15);
+  border-color: #111;
+  box-shadow: none;
 }
 
 .studio__searchIcon {
@@ -649,4 +649,320 @@
   margin: 0;
   max-width: 320px;
   line-height: 1.5;
+}
+
+/* ── Studio Modal ── */
+
+.studio__modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: studioFadeIn 0.15s ease;
+}
+
+.studio__modalCard {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+  animation: studioSlideUp 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+
+.studio__modalCard--wide {
+  max-width: 600px;
+}
+
+.studio__modalFormRow {
+  display: flex;
+  gap: 12px;
+}
+
+.studio__modalFormRow > .studio__modalField {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Custom Select ── */
+
+.studio__customSelect {
+  position: relative;
+}
+
+.studio__customSelectBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #fafafa;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  text-align: left;
+}
+
+.studio__customSelectBtn:hover {
+  border-color: #d1d5db;
+}
+
+.studio__customSelectBtn.is-open {
+  border-color: #111214;
+  box-shadow: 0 0 0 3px rgba(17, 18, 20, 0.08);
+}
+
+.studio__customSelectValue {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.studio__customSelectLabel {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.studio__customSelectIcon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: #6b7280;
+}
+
+.studio__customSelectChevron {
+  flex-shrink: 0;
+  color: #9ca3af;
+  transition: transform 150ms ease;
+}
+
+.studio__customSelectChevron.is-open {
+  transform: rotate(180deg);
+}
+
+.studio__customSelectDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  max-height: 200px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  padding: 4px;
+  animation: studioChipFadeIn 120ms ease;
+}
+
+.studio__customSelectOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: #374151;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 100ms ease;
+}
+
+.studio__customSelectOption:hover {
+  background: #f3f4f6;
+}
+
+.studio__customSelectOption.is-selected {
+  background: #f3f4f6;
+  color: #111214;
+  font-weight: 500;
+}
+
+.studio__customSelectOption .studio__customSelectIcon {
+  color: inherit;
+}
+
+/* ── Multi-Select Checkbox ── */
+
+.studio__multiSelectRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13.5px;
+  color: #374151;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+
+.studio__multiSelectRow:hover {
+  background: #f3f4f6;
+}
+
+.studio__multiSelectRow.is-checked {
+  background: #f3f4f6;
+  color: #111214;
+}
+
+.studio__multiSelectCheckbox {
+  width: 15px;
+  height: 15px;
+  accent-color: #111214;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.studio__multiSelectLabel {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.studio__multiSelectEmpty {
+  padding: 12px 10px;
+  font-size: 13px;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.studio__modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 0;
+}
+
+.studio__modalHeader h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.studio__modalClose {
+  color: #9ca3af;
+  padding: 4px;
+  border-radius: 6px;
+}
+.studio__modalClose:hover { background: #f3f4f6; }
+
+.studio__modalBody {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.studio__modalField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.studio__modalField label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.studio__modalField input,
+.studio__modalField textarea {
+  padding: 9px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fafafa;
+  resize: none;
+}
+.studio__modalField input:focus,
+.studio__modalField textarea:focus {
+  outline: none;
+  border-color: #111;
+  box-shadow: none;
+}
+
+.studio__modalDiffBtns {
+  display: flex;
+  gap: 8px;
+}
+.studio__modalDiffBtn {
+  flex: 1;
+  padding: 7px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  border: 1px solid #e5e7eb;
+  text-transform: capitalize;
+  color: #6b7280;
+  background: transparent;
+}
+.studio__modalDiffBtn.is-active {
+  background: #f3f4f6;
+  border-color: #111;
+  color: #111;
+  font-weight: 500;
+}
+
+.studio__modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 24px 20px;
+}
+
+.studio__modalCancel {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 150ms ease;
+}
+.studio__modalCancel:hover {
+  border-color: #d1d5db;
+}
+.studio__modalSubmit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  background: #111;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: opacity 150ms ease;
+}
+.studio__modalSubmit:hover { opacity: 0.85; }
+.studio__modalSubmit:disabled { opacity: 0.4; cursor: default; }
+
+@keyframes studioSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes studioFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }

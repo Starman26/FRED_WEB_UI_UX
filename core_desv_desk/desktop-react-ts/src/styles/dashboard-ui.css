@@ -1968,6 +1968,37 @@
   min-height: 70px;
 }
 
+/* ── Typewriter placeholder ── */
+
+.dash_chatInputWrap {
+  position: relative;
+}
+
+.dash_typewriterPlaceholder {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(16, 17, 19, 0.4);
+  pointer-events: none;
+  z-index: 1;
+  font-family: inherit;
+}
+
+.dash_typewriterCursor {
+  display: inline-block;
+  animation: twBlink 0.9s step-end infinite;
+  margin-left: 1px;
+  font-weight: 300;
+  opacity: 1;
+}
+
+@keyframes twBlink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
 /* ============================================================================
    SESSION SELECTOR
    ============================================================================ */

@@ -18,6 +18,10 @@ import ProfilePage from "./pages/Profile";
 import LivingLabPage from "./pages/Lab_Overview";
 import Notebook from "./pages/Notebook";
 
+// Apply saved theme immediately so all routes inherit it
+const savedTheme = localStorage.getItem("cora.theme") || "light";
+document.documentElement.setAttribute("data-theme", savedTheme);
+
 function AppRoutes() {
   return (
     <AuthProvider>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Check, CheckCircle, Loader2, ArrowLeft, ChevronLeft, ChevronDown, Pause, Play, Eye, RotateCcw, Info, Phone, PhoneOff, Mic, AudioLines } from "lucide-react";
 import { SparklesIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
@@ -23,17 +23,188 @@ interface ConnectedRobot { robot_id: string; connected: boolean; }
 /** Extended message type — adds optional `tool` field for tool-execution pills */
 type PracticeMsg = Message & { tool?: string };
 
+// ── Robot coordinate gauge ranges ──
+const ROBOT_RANGES: Record<string, { min: number; max: number; unit: string }> = {
+  "Joint 1": { min: -180, max: 180, unit: "°" },
+  "Joint 2": { min: -180, max: 180, unit: "°" },
+  "Joint 3": { min: -180, max: 180, unit: "°" },
+  "Joint 4": { min: -180, max: 180, unit: "°" },
+  "Joint 5": { min: -180, max: 180, unit: "°" },
+  "Joint 6": { min: -180, max: 180, unit: "°" },
+  "X": { min: -500, max: 500, unit: "mm" },
+  "Y": { min: -500, max: 500, unit: "mm" },
+  "Z": { min: 0, max: 600, unit: "mm" },
+  "Roll":  { min: -180, max: 180, unit: "°" },
+  "Pitch": { min: -180, max: 180, unit: "°" },
+  "Yaw":   { min: -180, max: 180, unit: "°" },
+};
+
+function RobotGaugeTable({ groups }: { groups: { title: string; rows: { label: string; value: string }[] }[] }) {
+  return (
+    <div className="studio__robotGauge">
+      {groups.map((group, gi) => (
+        <div key={gi} className="studio__robotGaugeGroup">
+          {group.title && <div className="studio__robotGaugeTitle">{group.title}</div>}
+          {group.rows.map(({ label, value }) => {
+            const numVal = parseFloat(value);
+            const range = ROBOT_RANGES[label];
+            const pct = range
+              ? Math.max(0, Math.min(100, ((numVal - range.min) / (range.max - range.min)) * 100))
+              : 50;
+            const isNeg = numVal < 0;
+            return (
+              <div key={label} className="studio__robotGaugeRow">
+                <span className="studio__robotGaugeLabel">{label}</span>
+                <div className="studio__robotGaugeTrack">
+                  <div className="studio__robotGaugeFill" style={{ width: `${pct}%` }} />
+                </div>
+                <span className={`studio__robotGaugeValue ${isNeg ? "is-neg" : ""}`}>{value}</span>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Message segmentation: text + gauge interleaving ──
+type MessageSegment =
+  | { type: "text"; content: string }
+  | { type: "gauge"; groups: { title: string; rows: { label: string; value: string }[] }[] };
+
+function segmentMessage(text: string): MessageSegment[] {
+  const lines = text.split('\n');
+  const segments: MessageSegment[] = [];
+
+  let textBuffer: string[] = [];
+  let currentGroup: { title: string; rows: { label: string; value: string }[] } | null = null;
+  let gaugeGroups: { title: string; rows: { label: string; value: string }[] }[] = [];
+  // Track whether we're inside a coordinate zone (headers + rows).
+  // Blank lines inside the zone are ignored; only real non-coordinate text breaks it.
+  let inCoordZone = false;
+
+  const flushText = () => {
+    const t = textBuffer.join('\n').trim();
+    if (t) segments.push({ type: "text", content: t });
+    textBuffer = [];
+  };
+
+  const flushGauges = () => {
+    if (currentGroup && currentGroup.rows.length > 0) gaugeGroups.push(currentGroup);
+    currentGroup = null;
+    if (gaugeGroups.length > 0) {
+      segments.push({ type: "gauge", groups: [...gaugeGroups] });
+      gaugeGroups = [];
+    }
+    inCoordZone = false;
+  };
+
+  for (const line of lines) {
+    const trimmed = line.replace(/^[\s\-\*•]+/, '').trim();
+
+    // Section header: TCP
+    if (/coordenadas?\s*tcp|tcp\s*position/i.test(trimmed)) {
+      flushText();
+      if (currentGroup?.rows.length) gaugeGroups.push(currentGroup);
+      currentGroup = { title: 'TCP', rows: [] };
+      inCoordZone = true;
+      continue;
+    }
+    // Section header: Joints
+    if (/[aá]ngulos?\s*(de\s*(los\s*)?)?joints?|joint\s*angles/i.test(trimmed)) {
+      flushText();
+      if (currentGroup?.rows.length) gaugeGroups.push(currentGroup);
+      currentGroup = { title: 'Joints', rows: [] };
+      inCoordZone = true;
+      continue;
+    }
+
+    // Coordinate data line
+    const match = trimmed.match(/^(Joint\s*\d+|X|Y|Z|Roll|Pitch|Yaw)\s*:\s*([-+]?\d+\.?\d*)\s*(°|mm|deg)?/i);
+    if (match) {
+      flushText();
+      if (!currentGroup) currentGroup = { title: '', rows: [] };
+      currentGroup.rows.push({
+        label: match[1].replace(/\s+/, ' '),
+        value: match[2] + (match[3] || ''),
+      });
+      inCoordZone = true;
+      continue;
+    }
+
+    // Blank or whitespace-only line inside coordinate zone — skip, don't break
+    if (inCoordZone && trimmed === '') {
+      continue;
+    }
+
+    // Real non-coordinate text — flush any accumulated gauges
+    if (inCoordZone) {
+      flushGauges();
+    }
+    textBuffer.push(line);
+  }
+
+  flushGauges();
+  flushText();
+
+  return segments;
+}
+
 interface PracticeViewProps {
   automation: Automation;
   sessionId: string;
   userId: string;
+  teamId: string;
   progress: UserProgress | undefined;
   onBack: () => void;
   onProgressUpdate: (automationId: string, updates: Partial<UserProgress>) => void;
   onRestart?: (automation: Automation) => void;
+  onHeaderControls?: (controls: React.ReactNode) => void;
 }
 
-export default function PracticeView({ automation, sessionId, userId, progress, onBack, onProgressUpdate, onRestart }: PracticeViewProps) {
+const PRACTICE_THINKING_MESSAGES = [
+  "Thinking...",
+  "Connecting to robot...",
+  "Processing request...",
+  "Analyzing movement...",
+  "Checking joint positions...",
+  "Executing command...",
+  "Reading sensors...",
+  "Validating safety...",
+  "Calculating trajectory...",
+  "Verifying state...",
+  "Synchronizing...",
+  "Preparing response...",
+];
+
+function PracticeThinkingIndicator() {
+  const [msgIndex, setMsgIndex] = useState(0);
+  const [fade, setFade] = useState(true);
+
+  useEffect(() => {
+    setMsgIndex(Math.floor(Math.random() * PRACTICE_THINKING_MESSAGES.length));
+    const interval = setInterval(() => {
+      setFade(false);
+      setTimeout(() => {
+        setMsgIndex(prev => (prev + 1) % PRACTICE_THINKING_MESSAGES.length);
+        setFade(true);
+      }, 200);
+    }, 1800);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="studio__practiceLoading">
+      <Loader2 size={16} className="studio__practiceLoadingSpinner" />
+      <span className={`studio__practiceLoadingMsg ${fade ? "is-visible" : "is-hidden"}`}>
+        {PRACTICE_THINKING_MESSAGES[msgIndex]}
+      </span>
+    </div>
+  );
+}
+
+export default function PracticeView({ automation, sessionId, userId, teamId, progress, onBack, onProgressUpdate, onRestart, onHeaderControls }: PracticeViewProps) {
   const steps = parseSteps(automation.md_content);
   const [currentStep, setCurrentStep] = useState(progress?.current_step ?? 0);
   const [messages, setMessages] = useState<PracticeMsg[]>([]);
@@ -46,6 +217,25 @@ export default function PracticeView({ automation, sessionId, userId, progress, 
   const lastResponseRef = useRef<string>("");
   const [toolExecuting, setToolExecuting] = useState<string | null>(null);
   const practiceChunksRef = useRef<PracticeChunk[]>([]);
+
+  // Dedup guard: prevent StrictMode double-inserts
+  const insertedMsgIds = useRef<Set<string>>(new Set());
+  const insertMessage = async (msg: {
+    id: string;
+    session_id: string;
+    auth_user_id: string;
+    sender: string;
+    content: string;
+    pasted_contents?: any[];
+  }) => {
+    if (insertedMsgIds.current.has(msg.id)) return;
+    insertedMsgIds.current.add(msg.id);
+    const { error } = await supabase.schema("chat").from("messages").insert(msg);
+    if (error) {
+      console.error("[PracticeView] Message insert error:", error.code, error.message);
+      insertedMsgIds.current.delete(msg.id);
+    }
+  };
 
   const [robots, setRobots] = useState<ConnectedRobot[]>([]);
   const [selectedRobotIds, setSelectedRobotIds] = useState<string[]>([]);
@@ -130,9 +320,18 @@ export default function PracticeView({ automation, sessionId, userId, progress, 
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
-  // Load existing messages
+  // Ensure session exists in chat.sessions, then load existing messages
   useEffect(() => {
     (async () => {
+      // Ensure session row exists (may be missing if restored from progress)
+      await supabase.schema("chat").from("sessions").upsert({
+        id: sessionId,
+        auth_user_id: userId,
+        team_id: teamId,
+        title: `Practice: ${automation.title}`,
+        chat_mode: "practice",
+      }, { onConflict: "id", ignoreDuplicates: true });
+
       const { data } = await supabase
         .schema("chat")
         .from("messages")
@@ -292,14 +491,12 @@ export default function PracticeView({ automation, sessionId, userId, progress, 
 
       if (combined) {
         const msgId = crypto.randomUUID();
-        supabase.schema("chat").from("messages").insert({
+        insertMessage({
           id: msgId,
           session_id: sessionId,
           auth_user_id: userId,
           sender: "ai",
           content: combined,
-        }).then(({ error: err }) => {
-          if (err) console.error("[Practice Chunk] DB insert failed:", err);
         });
       }
 
@@ -308,7 +505,6 @@ export default function PracticeView({ automation, sessionId, userId, progress, 
   }, [sessionId, userId]);
 
   // Agent chat hook
-  console.log("[PracticeView] md_content available:", automation.md_content ? automation.md_content.substring(0, 80) + "..." : "EMPTY/NULL");
   const { sendMessage: agentSend, suggestions: agentSuggestions } = useAgentChat({
     apiUrl: AGENT_API_URL,
     userId,
@@ -382,7 +578,7 @@ export default function PracticeView({ automation, sessionId, userId, progress, 
       }]);
 
       // Save to DB
-      supabase.schema("chat").from("messages").insert({
+      insertMessage({
         id: msgId,
         session_id: sessionId,
         auth_user_id: userId,
@@ -419,7 +615,7 @@ export default function PracticeView({ automation, sessionId, userId, progress, 
     setSuggestions([]);
     lastResponseRef.current = "";
 
-    await supabase.schema("chat").from("messages").insert({
+    await insertMessage({
       id: messageId,
       session_id: sessionId,
       auth_user_id: userId,
@@ -528,7 +724,7 @@ export default function PracticeView({ automation, sessionId, userId, progress, 
           createdAt: new Date().toISOString(),
         }]);
 
-        supabase.schema("chat").from("messages").insert({
+        insertMessage({
           id: messageId,
           session_id: sessionId,
           auth_user_id: userId,
@@ -646,19 +842,11 @@ export default function PracticeView({ automation, sessionId, userId, progress, 
     isPlayingRef.current = false;
   }, []);
 
-  return (
-    <div className="studio__practiceView">
-      {/* Header */}
-      <div className="studio__practiceHeader">
-        <button type="button" className="studio__practiceBack" onClick={onBack}>
-          <ChevronLeft size={16} />
-          <span>Back</span>
-        </button>
-        <div className="studio__practiceTitle">
-          Practice: {automation.title}
-        </div>
-        <div style={{ flex: 1 }} />
-
+  // ── Push practice controls into the main header ──
+  useEffect(() => {
+    if (!onHeaderControls) return;
+    onHeaderControls(
+      <>
         {/* Robot status pill */}
         {robotsLoading ? (
           <span className="studio__robotPill studio__robotPill--disconnected">
@@ -740,12 +928,34 @@ export default function PracticeView({ automation, sessionId, userId, progress, 
           {isPaused ? "Resume" : "Pause"}
         </button>
         <div className={`studio__practiceTimer ${isPaused ? "is-paused" : ""}`}>{elapsedTime}</div>
-      </div>
+      </>
+    );
+    return () => onHeaderControls?.(null);
+  }, [onHeaderControls, robotsLoading, robots, selectedRobotIds, showRobotDropdown, inCall, isCallActive, isPaused, elapsedTime, startCall, stopCall, handlePause, handleResume]);
 
+  // Cache segmentMessage per message to avoid re-parsing on every render
+  const segmentedMessages = useMemo(() => {
+    const map = new Map<string, MessageSegment[]>();
+    for (const msg of messages) {
+      if (msg.sender === "ai" && !msg.tool) {
+        map.set(msg.id, segmentMessage(msg.text));
+      }
+    }
+    return map;
+  }, [messages]);
+
+  return (
+    <div className="studio__practiceView">
       {/* 2-column body */}
       <div className="studio__practiceBody">
         {/* Steps sidebar */}
         <div className="studio__practiceSidebar">
+          <div className="studio__practiceSidebarNav">
+            <button type="button" className="studio__practiceBack" onClick={onBack}>
+              <ChevronLeft size={16} />
+              <span>Back</span>
+            </button>
+          </div>
           <div className="studio__practiceSidebarHeader">
             <h3 className="studio__practiceSidebarTitle">{automation.title}</h3>
             <span className="studio__practiceDiffBadge">
@@ -818,7 +1028,21 @@ export default function PracticeView({ automation, sessionId, userId, progress, 
                   </div>
                 ) : (
                   <>
-                    <MessageBubble message={msg} />
+                    {(() => {
+                      const segments = segmentedMessages.get(msg.id);
+                      if (segments && segments.some(s => s.type === "gauge")) {
+                        return (
+                          <>
+                            {segments.map((seg, i) =>
+                              seg.type === "text"
+                                ? <MessageBubble key={i} message={{ ...msg, text: seg.content }} />
+                                : <RobotGaugeTable key={i} groups={seg.groups} />
+                            )}
+                          </>
+                        );
+                      }
+                      return <MessageBubble message={msg} />;
+                    })()}
                     {msg.sender === "user" && eventRuns[msg.id] && (
                       <InlineEventRun
                         run={eventRuns[msg.id]}
@@ -849,12 +1073,7 @@ export default function PracticeView({ automation, sessionId, userId, progress, 
               </div>
             )}
 
-            {isLoading && !toolExecuting && (
-              <div className="studio__practiceLoading">
-                <Loader2 size={18} className="animate-spin" />
-                <span>Thinking...</span>
-              </div>
-            )}
+            {isLoading && !toolExecuting && <PracticeThinkingIndicator />}
             <div ref={messagesEndRef} />
           </div>
 

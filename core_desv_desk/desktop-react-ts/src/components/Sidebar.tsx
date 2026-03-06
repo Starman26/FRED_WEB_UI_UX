@@ -161,28 +161,37 @@ export function Sidebar({
   const [showAgentInfo, setShowAgentInfo] = useState(false);
 
   // Eye animation state
-  type EyeState = "idle" | "blink" | "wide" | "look";
+  type EyeState = "idle" | "blink" | "wide" | "look" | "sleepy" | "zzz";
   const [eyeState, setEyeState] = useState<EyeState>("idle");
   const [lookDir, setLookDir] = useState({ x: 0, y: 0 });
   const eyeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const isNightTime = () => new Date().getHours() >= 20;
+
   const runEyeLoop = useCallback(() => {
     if (eyeTimerRef.current) clearTimeout(eyeTimerRef.current);
 
-    const actions: EyeState[] = ["blink", "blink", "wide", "look", "idle", "idle"];
+    const night = isNightTime();
+
+    const actions: EyeState[] = night
+      ? ["sleepy", "sleepy", "zzz", "blink", "idle", "idle", "idle"]
+      : ["blink", "blink", "wide", "look", "idle", "idle", "idle"];
     const pick = actions[Math.floor(Math.random() * actions.length)];
+
+    // Delay between actions: night = 2500–5000ms, day = 2000–4500ms
+    const nextDelay = () => night ? 2500 + Math.random() * 2500 : 2000 + Math.random() * 2500;
 
     if (pick === "blink") {
       setEyeState("blink");
       eyeTimerRef.current = setTimeout(() => {
         setEyeState("idle");
-        eyeTimerRef.current = setTimeout(runEyeLoop, 1500 + Math.random() * 3500);
+        eyeTimerRef.current = setTimeout(runEyeLoop, nextDelay());
       }, 180);
     } else if (pick === "wide") {
       setEyeState("wide");
       eyeTimerRef.current = setTimeout(() => {
         setEyeState("idle");
-        eyeTimerRef.current = setTimeout(runEyeLoop, 1500 + Math.random() * 3000);
+        eyeTimerRef.current = setTimeout(runEyeLoop, nextDelay());
       }, 1000 + Math.random() * 1500);
     } else if (pick === "look") {
       setLookDir({ x: (Math.random() - 0.5) * 8, y: (Math.random() - 0.5) * 6 });
@@ -190,11 +199,23 @@ export function Sidebar({
       eyeTimerRef.current = setTimeout(() => {
         setEyeState("idle");
         setLookDir({ x: 0, y: 0 });
-        eyeTimerRef.current = setTimeout(runEyeLoop, 1500 + Math.random() * 3000);
+        eyeTimerRef.current = setTimeout(runEyeLoop, nextDelay());
       }, 1500 + Math.random() * 2500);
+    } else if (pick === "sleepy") {
+      setEyeState("sleepy");
+      eyeTimerRef.current = setTimeout(() => {
+        setEyeState("idle");
+        eyeTimerRef.current = setTimeout(runEyeLoop, nextDelay());
+      }, 3500 + Math.random() * 2000);
+    } else if (pick === "zzz") {
+      setEyeState("zzz");
+      eyeTimerRef.current = setTimeout(() => {
+        setEyeState("idle");
+        eyeTimerRef.current = setTimeout(runEyeLoop, nextDelay());
+      }, 3500);
     } else {
       setEyeState("idle");
-      eyeTimerRef.current = setTimeout(runEyeLoop, 2000 + Math.random() * 4000);
+      eyeTimerRef.current = setTimeout(runEyeLoop, nextDelay());
     }
   }, []);
 
@@ -547,6 +568,15 @@ export function Sidebar({
                 style={eyeState === "look" ? { "--look-x": `${lookDir.x}px`, "--look-y": `${lookDir.y}px` } as React.CSSProperties : undefined}
               />
             </div>
+
+            {/* ZZZ floating letters — visible only during zzz state */}
+            {eyeState === "zzz" && (
+              <div className="sidebar__zzzContainer">
+                <span className="sidebar__zFloat sidebar__zFloat--1">z</span>
+                <span className="sidebar__zFloat sidebar__zFloat--2">z</span>
+                <span className="sidebar__zFloat sidebar__zFloat--3">z</span>
+              </div>
+            )}
 
             {/* Info button - appears on hover */}
             <button
